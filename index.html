@@ -1665,7 +1665,8 @@ async function backendFetch(payload, onTokenUpdate) {
   return d.content?.map((b) => b.text || "").join("") || "The world grows silent...";
 }
 
-async function callClaude(messages, system, playerId, onTokenUpdate) {
+async function callClaude(messages, system, playerIdArg, onTokenUpdate) {
+  const playerId = playerIdArg || window.__aethermoorPlayerId || 'unknown';
   // ── Screen player input before sending to narrator ───────────────────────
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
   if (lastUserMsg && lastUserMsg.content) {
@@ -4620,6 +4621,7 @@ function AethermoorRPG() {
       localStorage.setItem('aethermoor_player_id', id);
     }
     return id;
+  window.__aethermoorPlayerId = playerId;
   }, []);
 
   // ── Token system ──────────────────────────────────────────────────────
