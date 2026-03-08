@@ -36,7 +36,18 @@
   }
 </script>
   <div id="root"></div>
-  <script>const { useState, useEffect, useRef } = React;
+  <script>
+// ── Player ID — generated once, persisted forever ────────────
+(function() {
+  let id = localStorage.getItem('aethermoor_player_id');
+  if (!id) {
+    id = 'player_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('aethermoor_player_id', id);
+  }
+  window.__aethermoorPlayerId = id;
+  console.log('[Aethermoor] playerId:', id);
+})();
+const { useState, useEffect, useRef } = React;
 async function storageGet(key) {
   const val = localStorage.getItem("aethermoor_" + key);
   if (val === null) throw new Error("not found");
