@@ -1634,6 +1634,7 @@ async function backendFetch(payload, onTokenUpdate) {
   const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   let res;
+  console.log('[backendFetch] sending playerId:', payload.playerId, 'window:', window.__aethermoorPlayerId);
   try {
     res = await fetch(`${BACKEND_URL}/api/claude`, {
       method: "POST",
