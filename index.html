@@ -17,8 +17,8 @@
     <div style="font-size:2.5rem;margin-bottom:1rem;">⚔️</div>
     <h2 style="color:#c9a84c;margin-bottom:1rem;font-size:1.5rem;">Welcome to Aethermoor</h2>
     <p style="line-height:1.8;margin-bottom:1.5rem;font-size:0.95rem;">
-      This game is intended for players aged <strong>13 and over</strong>.<br>
-      By entering you confirm you meet this requirement and agree to the Terms of Use.
+      This game is intended for players aged <strong>18 and over</strong>.<br>
+      By entering you confirm you are 18 or older and agree to the Terms of Use.
     </p>
     <button onclick="confirmAge()" style="background:#c9a84c;color:#0d0d1a;border:none;padding:0.85rem 2.5rem;font-size:1rem;font-family:Georgia,serif;cursor:pointer;border-radius:4px;font-weight:bold;letter-spacing:0.05em;">
       I confirm — Enter Aethermoor
@@ -1126,24 +1126,284 @@ function generateShopStock(location, player) {
   return stock;
 }
 const XP_TABLE = [0, 100, 250, 450, 700, 1e3, 1350, 1750, 2200, 2700, 3250, 3850, 4500, 5200, 5950, 6750, 7600, 8500, 9450, 10500];
-const LOCATIONS = ["Millhaven Village", "Thornwick Village", "Ashford Town", "Irongate Town", "Duskwall City", "Solara City", "Aethermoor Capital"];
-const ROADS = [
-  { id: "road_mill_ash", from: "Millhaven Village", to: "Ashford Town", steps: 4, danger: 1, name: "The Miller's Path", terrain: "rolling farmland and hedgerows", factionInfluence: "merchants_compact", weatherPattern: "rainy" },
-  { id: "road_thorn_iron", from: "Thornwick Village", to: "Irongate Town", steps: 4, danger: 3, name: "The Thornwood Trail", terrain: "dense forest and mossy stone", factionInfluence: "thornwood_druids", weatherPattern: "misty" },
-  { id: "road_ash_iron", from: "Ashford Town", to: "Irongate Town", steps: 3, danger: 2, name: "The King's Road", terrain: "wide cobbled highway with waymarkers", factionInfluence: "crowns_watch", weatherPattern: "clear" },
-  { id: "road_ash_dusk", from: "Ashford Town", to: "Duskwall City", steps: 5, danger: 4, name: "The Shadow Pass", terrain: "winding mountain road and dark valleys", factionInfluence: "shadowmere_guild", weatherPattern: "stormy" },
-  { id: "road_iron_sol", from: "Irongate Town", to: "Solara City", steps: 5, danger: 2, name: "The Sunway", terrain: "open plains and ancient standing stones", factionInfluence: "arcane_academy", weatherPattern: "clear" },
-  { id: "road_dusk_cap", from: "Duskwall City", to: "Aethermoor Capital", steps: 6, danger: 3, name: "The Imperial Highway", terrain: "grand road with soldier patrols and inns", factionInfluence: "crowns_watch", weatherPattern: "overcast" },
-  { id: "road_sol_cap", from: "Solara City", to: "Aethermoor Capital", steps: 6, danger: 2, name: "The Golden Road", terrain: "merchant caravans and prosperous villages", factionInfluence: "merchants_compact", weatherPattern: "clear" },
-  { id: "road_mill_thorn", from: "Millhaven Village", to: "Thornwick Village", steps: 3, danger: 1, name: "The Village Track", terrain: "muddy path through quiet countryside", factionInfluence: "thornwood_druids", weatherPattern: "rainy" }
+// --- NEW PROCEDURAL WORLD GENERATOR ---
+const SETTLEMENT_TYPES = {
+  capital: {
+    label: "Capital City", icon: "🏰", popRange: [5000, 15000],
+    industries: ["Imperial Banking", "High Alchemy", "Grand Courts", "Arcane Academy"],
+    questThemes: [
+      "A noble house is quietly poisoning rivals — the deaths are blamed on plague",
+      "The city guard have been bribed into silence about a string of disappearances in the lower quarters",
+      "A powerful mage on the council is siphoning tax gold into forbidden experiments",
+      "Riots are brewing in the slums after grain prices were tripled without explanation",
+      "An ancient vault beneath the capital has been breached — something got out",
+      "A spy network has infiltrated the palace, and nobody knows who to trust",
+      "The high priest has been replaced — the new one preaches dangerous doctrine",
+      "Counterfeit Imperial coin is flooding the markets, destabilising trade across the realm"
+    ]
+  },
+  city: {
+    label: "Major City", icon: "🏙️", popRange: [1500, 4500],
+    industries: ["Steel-work", "Shipbuilding", "Alchemy", "Textiles"],
+    questThemes: [
+      "The merchant guild has a stranglehold on the city — independent traders are being driven out by force",
+      "A series of arson attacks have hit the docklands, each one blamed on a different rival faction",
+      "The city's alchemist quarter reeks of something wrong — apprentices have been going mad",
+      "A thieves guild is openly taxing street vendors and the watch does nothing",
+      "Refugees from a destroyed village are camped at the gates — the city won't let them in",
+      "The steel foundry collapsed, killing dozens — the owner is bribing the inquest",
+      "A plague of rats has descended on the granary district — they seem unnaturally organised",
+      "Duelling has been outlawed but noble scions keep turning up dead in alleyways"
+    ]
+  },
+  town: {
+    label: "Market Town", icon: "🏘️", popRange: [500, 1200],
+    industries: ["Brewing", "Pottery", "Blacksmithing", "Livestock Market"],
+    questThemes: [
+      "The miller has been found dead in his wheel — the mill is now silent and nobody will go near it",
+      "A travelling merchant sold cursed wares at the last market — buyers are falling ill in strange ways",
+      "The town's well water has turned foul and the healer doesn't know why",
+      "Bandits are charging tolls on the road in — the alderman is suspiciously unconcerned",
+      "Two prominent families are on the brink of open violence over a land dispute",
+      "The blacksmith has locked himself in his forge and won't come out — hammering has not stopped for three days",
+      "A con artist posing as a tax collector has stripped several families of their savings",
+      "Livestock are being stolen at night — no tracks, no blood, no sign of struggle"
+    ]
+  },
+  village: {
+    label: "Village", icon: "🏡", popRange: [100, 400],
+    industries: ["Timber", "Herbalism", "Milling", "Fishing"],
+    questThemes: [
+      "Children have been daring each other to visit the old woodcutter's cottage — one didn't come back",
+      "The herb woman who tended the sick has vanished, and now there is nobody to treat a spreading fever",
+      "Something has been digging up the graveyard at night — the graves are empty by morning",
+      "The village elder insists a neighbouring settlement stole their harvest, but the evidence is strange",
+      "A feral dog pack is terrorising the outskirts — but the wounds on the livestock look like blade cuts",
+      "The river that feeds the mill has slowed to a trickle upstream — something is blocking it",
+      "A wandering preacher arrived a fortnight ago and half the village now follows him devotedly",
+      "Three fishermen rowed out at dawn and came back in a panic, refusing to say what they saw"
+    ]
+  },
+  hamlet: {
+    label: "Hamlet", icon: "🛖", popRange: [20, 80],
+    industries: ["Peat Cutting", "Charcoal Burning", "Waystation", "Trapping"],
+    questThemes: [
+      "The only able-bodied man left went into the bog three days ago to cut peat and hasn't returned",
+      "Strange lights have been seen circling the hamlet after dark — the folk are too scared to sleep",
+      "A wounded stranger collapsed at the door of the waystation, clutching something they won't let go of",
+      "The charcoal burner claims something is living in the deep wood that drives his animals mad",
+      "Half the hamlet's winter stores have rotted overnight — they will not survive the cold without help",
+      "An old woman says the hamlet was cursed years ago and the curse is waking again",
+      "A group of armed men rode through and took the hamlet's only horse — they said it was lawful",
+      "The trapper's snares keep being sprung by something too large and too clever to be any normal beast"
+    ]
+  },
+  farm_arable: {
+    label: "Arable Farm", icon: "🌾", popRange: [5, 15],
+    industries: ["Wheat", "Barley", "Rye", "Vegetables"],
+    questThemes: [
+      "The wheat crop has turned black overnight — it looks like blight but spreads too fast to be natural",
+      "A debt collector arrived and is threatening to seize the farm unless an impossible sum is paid",
+      "Crows have gathered in impossible numbers and will not be scared off — the seed is being eaten",
+      "The farmer's eldest son went to seek his fortune in the city six months ago — no word since",
+      "Underground tunnelling has collapsed part of a field — something has been burrowing from below",
+      "A hermit living in the woods at the field's edge is accused of hexing the harvest"
+    ]
+  },
+  farm_livestock: {
+    label: "Livestock Farm", icon: "🐄", popRange: [5, 15],
+    industries: ["Cattle", "Sheep", "Poultry", "Pig Rearing"],
+    questThemes: [
+      "Cattle are being found drained of blood at the edge of the pasture, always at the full moon",
+      "The shepherd's dog refuses to herd the flock near the northern hill — the sheep won't go either",
+      "A sickness is moving through the pig pens that the farrier has never seen before",
+      "Half the flock has been impounded by a lord's reeve over a disputed boundary — the paperwork looks forged",
+      "Someone has been cutting wool from sleeping sheep in the night — no fleece, no trace",
+      "A travelling butcher made an offer far too generous for the cattle — the farmer is suspicious"
+    ]
+  },
+  farm_mixed: {
+    label: "Mixed Farm", icon: "🚜", popRange: [8, 20],
+    industries: ["Dairy", "Grain", "Orchards", "Beekeeping"],
+    questThemes: [
+      "The bees have abandoned their hives all at once — the orchard cannot be pollinated without them",
+      "Milk is turning sour within hours of milking, even in cold storage — the dairy is ruined",
+      "The farmer found strange symbols carved into every apple tree in the orchard",
+      "A family of squatters has moved into the old barn and refuses to leave, claiming ancient right",
+      "The grain store is infested with something — but the holes in the sacks are too large to be rats",
+      "The farmer's prize dairy cow won first ribbon at the last market fair — it was stolen that same night"
+    ]
+  }
+};
+
+function generateProceduralWorld() {
+  const world = [];
+
+  // ── Name pools ──────────────────────────────────────────────────────────
+  // Large pool so we never repeat names across 60+ settlements
+  const prefixes = [
+    "Oakhaven","Stoneford","Ravenwatch","Fairmeadow","Gloomspire","Highgarden",
+    "Ironhold","Suntree","Muddybanks","Cloudpeak","Duskwood","Goldcrest",
+    "Ashwick","Bramblegate","Crestfall","Dunmore","Embervale","Frostholm",
+    "Greywater","Hollowmere","Ivywood","Kettlebridge","Larchfield","Millcross",
+    "Netherby","Oldwick","Pinehurst","Quarrystone","Redmarsh","Silverbrook",
+    "Thornmere","Undercliff","Verdant","Westgate","Yarrow","Blackfen",
+    "Coppergate","Deepholm","Eastmere","Foxley","Grimshaw","Harrowfield",
+    "Kestrel","Linden","Moorside","Northgate","Owlwatch","Pebbleford",
+    "Reedmere","Saltmarsh","Tallow","Upton","Wychwood","Zephyrhill"
+  ];
+  const pick = () => prefixes.splice(Math.floor(Math.random()*prefixes.length),1)[0] || "Ancient";
+
+  // Ruler name parts for variety
+  const rulerFirst = ["Edmund","Mira","Aldric","Serafina","Tobias","Wren","Gareth","Isolde","Cormac","Elara","Branoc","Thessaly","Oswin","Veda","Radulf"];
+  const rulerTitle = ["of the","the","Lord of","Lady of"];
+  const traits = ["Wise","Stern","Kind","Greedy","Cautious","Ambitious","Pious","Ruthless","Fair","Eccentric"];
+  const mkRuler = (place) => ({
+    name: rulerFirst[Math.floor(Math.random()*rulerFirst.length)] + " " +
+          rulerTitle[Math.floor(Math.random()*rulerTitle.length)] + " " +
+          place.split(" ")[0],
+    trait: traits[Math.floor(Math.random()*traits.length)]
+  });
+
+  const add = (type, forcedName) => {
+    const config = SETTLEMENT_TYPES[type];
+    const n = forcedName || pick() + " " + config.label.split(" ").pop();
+    world.push({
+      name: n, type, icon: config.icon,
+      populace: Math.floor(Math.random()*(config.popRange[1]-config.popRange[0]))+config.popRange[0],
+      industry: config.industries,
+      ruler: mkRuler(n)
+    });
+  };
+
+  // ── Settlement counts ────────────────────────────────────────────────────
+  // Based on medieval England ratios: the larger the settlement,
+  // the more farms cluster around it to feed it.
+  add("capital", "Aethermoor Capital");   // 1 capital
+  for(let i=0; i<6; i++)  add("city");   // 6 cities
+  for(let i=0; i<10; i++) add("town");   // 10 towns
+  for(let i=0; i<16; i++) add("village");// 16 villages
+  for(let i=0; i<15; i++) add("hamlet"); // 15 hamlets
+
+  // ── Farms: historically tied to settlement size ───────────────────────────
+  // Capital feeds thousands — needs 5-7 surrounding farms
+  // Cities need 3-5 farms each, towns 2-3, villages 1-2, hamlets 0-1
+  // Randomised within each range for variety
+  const farmTypes = ["farm_arable","farm_livestock","farm_mixed"];
+  const farmRanges = { capital:[5,7], city:[3,5], town:[2,3], village:[1,2], hamlet:[0,1] };
+
+  world.slice().forEach(settlement => {
+    const [min, max] = farmRanges[settlement.type] || [0,0];
+    const count = min + Math.floor(Math.random()*(max-min+1));
+    for(let i=0; i<count; i++) {
+      const ft = farmTypes[Math.floor(Math.random()*farmTypes.length)];
+      const config = SETTLEMENT_TYPES[ft];
+      const farmName = pick() + " " + config.label.split(" ").pop();
+      world.push({
+        name: farmName, type: ft, icon: config.icon,
+        parentSettlement: settlement.name,  // links back to parent
+        populace: Math.floor(Math.random()*(config.popRange[1]-config.popRange[0]))+config.popRange[0],
+        industry: config.industries,
+        ruler: mkRuler(farmName)
+      });
+    }
+  });
+
+  return world;
+}
+
+const WORLD_DATA = generateProceduralWorld();
+const LOCATIONS = WORLD_DATA.map(l => l.name);
+
+// ── Road network ─────────────────────────────────────────────────────────
+// Main settlements form a branching network; farms connect to their parent only.
+const ROAD_NAMES = [
+  "The King's Road","The Merchant Way","The Old North Road","The Salt Road",
+  "The River Road","The Forest Path","The High Road","The Pilgrim's Way",
+  "The Drovers' Track","The Western Pass","The Eastern Vale Road","The Mill Road"
 ];
+const ROAD_TERRAINS = [
+  "rolling farmland","dense woodland","open moorland","river valley",
+  "rocky hillside","marshy lowland","ancient forest","coastal cliffs"
+];
+const ROAD_DANGER = { capital:1, city:1, town:2, village:2, hamlet:3 };
+
+const ROADS = (() => {
+  const roads = [];
+  let id = 0;
+  const mkRoad = (from, to, dangerLevel) => ({
+    id: `road_${id++}`,
+    from, to,
+    steps: dangerLevel <= 1 ? 3 : dangerLevel <= 2 ? 4 : 5,
+    danger: dangerLevel,
+    name: ROAD_NAMES[Math.floor(Math.random()*ROAD_NAMES.length)],
+    terrain: ROAD_TERRAINS[Math.floor(Math.random()*ROAD_TERRAINS.length)],
+    factionInfluence: "merchants_compact",
+    weatherPattern: "clear"
+  });
+
+  // Separate main settlements from farms
+  const mainSettlements = WORLD_DATA.filter(d => !d.parentSettlement);
+  const farms = WORLD_DATA.filter(d => d.parentSettlement);
+
+  // Connect main settlements in a chain (backbone road network)
+  for(let i = 0; i < mainSettlements.length - 1; i++) {
+    const danger = Math.max(
+      ROAD_DANGER[mainSettlements[i].type] || 2,
+      ROAD_DANGER[mainSettlements[i+1].type] || 2
+    );
+    roads.push(mkRoad(mainSettlements[i].name, mainSettlements[i+1].name, danger));
+  }
+
+  // Add a few shortcut roads between non-adjacent main settlements for variety
+  const extras = Math.floor(mainSettlements.length / 4);
+  for(let e = 0; e < extras; e++) {
+    const a = Math.floor(Math.random() * mainSettlements.length);
+    const b = (a + 2 + Math.floor(Math.random() * 4)) % mainSettlements.length;
+    if(a !== b) {
+      roads.push(mkRoad(mainSettlements[a].name, mainSettlements[b].name, 3));
+    }
+  }
+
+  // Connect each farm to its parent settlement (short dirt track, higher danger)
+  farms.forEach(farm => {
+    roads.push(mkRoad(farm.parentSettlement, farm.name, 3));
+  });
+
+  return roads;
+})();
+
 function getRoadsFrom(location) {
   return ROADS.filter((r) => r.from === location || r.to === location).map((r) => ({
     ...r,
     destination: r.from === location ? r.to : r.from
   }));
 }
-const WEATHER_STATES = ["clear", "overcast", "rain", "storm"];
+
+const getLocalLore = (n) => {
+  const d = WORLD_DATA.find(l => l.name === n);
+  if (!d) return "Wilderness.";
+  const typeLabel = SETTLEMENT_TYPES[d.type]?.label || d.type;
+  const parent = d.parentSettlement ? ` Supplies provisions to: ${d.parentSettlement}.` : "";
+  // Each settlement gets a persistent quest theme seeded from its name
+  // so the same location always has the same local trouble
+  const themes = SETTLEMENT_TYPES[d.type]?.questThemes || [];
+  let localTrouble = "";
+  if (themes.length > 0) {
+    // Seed from settlement name so it stays consistent across narrator calls
+    const seed = d.name.split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    localTrouble = " LOCAL TROUBLE: " + themes[seed % themes.length];
+  }
+  return `${d.name} (${typeLabel}). Pop: ~${d.populace}. Industry: ${d.industry.join(", ")}. Ruler: ${d.ruler.name} — ${d.ruler.trait}.${parent}${localTrouble}`;
+};
+
+const LOCATION_TIERS = {};
+WORLD_DATA.forEach(d => {
+  if (d.type === 'capital') LOCATION_TIERS[d.name] = 'capital';
+  else if (d.type === 'city') LOCATION_TIERS[d.name] = 'city';
+  else if (d.type === 'town') LOCATION_TIERS[d.name] = 'town';
+  else LOCATION_TIERS[d.name] = 'village';
+});
 const WEATHER_ICONS = { clear: "\u2600\uFE0F", overcast: "\u{1F325}\uFE0F", rain: "\u{1F327}\uFE0F", storm: "\u26C8\uFE0F" };
 const WEATHER_DESC = {
   clear: "clear skies and fair travelling",
@@ -1208,14 +1468,47 @@ function pickEncounterType(road, isNight, lastEncounterId, joinedFactions) {
   }
   return table[0];
 }
-function pickCombatEncounterType(road, isNight) {
-  const eligible = ROAD_COMBAT_TYPES.filter((t) => {
-    if (road.factionInfluence === "thornwood_druids" && t.id === "wolves") return true;
-    if (road.factionInfluence === "shadowmere_guild" && t.id === "bandits") return true;
-    if (road.factionInfluence === "crowns_watch" && t.id === "deserters") return true;
-    if (isNight && (t.id === "undead" || t.id === "cultists")) return true;
-    return t.id === "bandits" || t.id === "wolves" || t.id === "monster";
-  });
+function pickCombatEncounterType(road, isNight, weather) {
+  // Build a weighted pool based on road, time of day, and weather
+  const pool = [];
+  const add = (type, weight) => { for (let i = 0; i < weight; i++) pool.push(type); };
+
+  // Faction influence always adds that type
+  if (road.factionInfluence === "thornwood_druids") add("wolves", 3);
+  if (road.factionInfluence === "shadowmere_guild")  add("bandits", 3);
+  if (road.factionInfluence === "crowns_watch")      add("deserters", 3);
+
+  // Night boosts undead and cultists
+  if (isNight) { add("undead", 2); add("cultists", 2); }
+
+  // Weather shifts the encounter pool
+  if (weather === "rain") {
+    // Rain — animals hunt, bandits less likely (soggy ambushes are miserable)
+    add("wolves", 3);
+    add("monster", 2);
+    add("bandits", 1);
+  } else if (weather === "overcast") {
+    // Overcast — gloomy light, good cover for ambushes and the unnatural
+    add("bandits", 2);
+    add("undead", 2);
+    add("cultists", 1);
+  } else if (weather === "storm") {
+    // Storm — handled upstream (no combat in storm), but just in case
+    add("wolves", 2);
+    add("monster", 2);
+  } else {
+    // Clear — standard distribution
+    add("bandits", 2);
+    add("wolves", 2);
+    add("monster", 1);
+    add("deserters", 1);
+  }
+
+  // Find matching ROAD_COMBAT_TYPES entries from pool
+  const eligible = pool
+    .map(id => ROAD_COMBAT_TYPES.find(t => t.id === id))
+    .filter(Boolean);
+
   return eligible[Math.floor(Math.random() * eligible.length)] || ROAD_COMBAT_TYPES[0];
 }
 function getEncounterChance(danger, isNight, stepsSinceEncounter, legacyPerks) {
@@ -1297,13 +1590,9 @@ const INIT_PLAYER = (name, cls) => ({
   // perks carried from NG+ runs
   legacyItems: [],
   // legendary items carried from NG+ runs
-  isDemo: true
-  // true = Wanderer/free player. Caps level at 5, dungeon at floor 3.
-  // Set to false once Patreon subscription is verified.
 });
-// ── Backend proxy URL ─────────────────────────────────────────────────────
-// During development: point this at localhost where your server is running.
-// After deploying to Railway: replace with your Railway URL, e.g.:
+// ── Backend URL ──────────────────────────────────────────────────────────
+// Live Railway server — update this if the backend URL ever changes.
 const BACKEND_URL = "https://aethermoor-backend-production.up.railway.app";
 
 // ── Content safety screener ───────────────────────────────────────────────
@@ -1326,7 +1615,7 @@ If the message is normal fantasy RPG gameplay — exploring, fighting, talking t
 When in doubt, reply BLOCK.`;
 
 // ── Shared fetch helper — always calls your backend, never Anthropic directly ──
-async function backendFetch(payload) {
+async function backendFetch(payload, onTokenUpdate) {
   // 25-second timeout — prevents the spinner hanging forever on network issues
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 25000);
@@ -1354,16 +1643,25 @@ async function backendFetch(payload) {
     return `The narrator pauses to catch their breath.\n\n${err.message || "Too many actions at once — give it a moment and try again."}\n\n{"context":"explore"}`;
   }
 
+  // Out of tokens
+  if (res.status === 402) {
+    return `__OUT_OF_TOKENS__`;
+  }
+
   // Other server error
   if (!res.ok) {
     return `The world flickers, as if reality itself stumbled.\n\nSomething went wrong reaching the story (${res.status}). Please try again in a moment.\n\n{"context":"explore"}`;
   }
 
   const d = await res.json();
+  // Update token balance from backend response
+  if (typeof d.tokenBalance === 'number' && onTokenUpdate) {
+    onTokenUpdate(d.tokenBalance);
+  }
   return d.content?.map((b) => b.text || "").join("") || "The world grows silent...";
 }
 
-async function callClaude(messages, system) {
+async function callClaude(messages, system, playerId, onTokenUpdate) {
   // ── Screen player input before sending to narrator ───────────────────────
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
   if (lastUserMsg && lastUserMsg.content) {
@@ -1373,6 +1671,7 @@ async function callClaude(messages, system) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type:       "screen",
+          playerId,
           model:      "claude-haiku-4-5-20251001",
           max_tokens: 5,
           system:     SCREEN_SYSTEM,
@@ -1395,11 +1694,12 @@ async function callClaude(messages, system) {
   // ── Normal narrator call via backend ─────────────────────────────────────
   return backendFetch({
     type:       "narrator",
+    playerId,
     model:      "claude-sonnet-4-20250514",
     max_tokens: 900,
     system,
     messages,
-  });
+  }, onTokenUpdate);
 }
 const NARRATOR_SYSTEM = (player, worldSeed) => {
   const repTier = getRepTier(player.reputation || 0);
@@ -1408,7 +1708,8 @@ const NARRATOR_SYSTEM = (player, worldSeed) => {
     return r > 0 ? `${FACTIONS[id]?.name}(${FACTION_RANKS[r]}${(player.joinedFactions || []).includes(id) ? " \u2605" : ""})` : null;
   }).filter(Boolean).join(", ") || "None";
   const locRank = getLocationRank((player.locationStandings || {})[player.location] || 0);
-  const activeQuests = (player.quests || []).filter((q) => q.status === "active");
+const settlementData = getLocalLore(player.location);
+const activeQuests = (player.quests || []).filter((q) => q.status === "active");
   const questSummary = activeQuests.length > 0 ? activeQuests.map((q) => `"${q.title}" (${q.objective})`).join("; ") : "None";
   const travelSummary = (() => {
     if (!player.travel) return null;
@@ -1460,7 +1761,7 @@ TRAVEL: ${travelSummary}` : ""}
 
 ${player.context === "combat" && player.combat ? `COMBAT: ${buildCombatPrompt(player.combat.enemy, player.combat.lastAction || "engaged", player.combat.lastPlayerDmg || 0, player.combat.lastEnemyDmg || 0, { isCrit: player.combat.lastCrit || false, enemySpecial: player.combat.lastEnemySpecial || null, tickDmg: player.combat.lastTickDmg || 0, playerDef: player.combat.playerWasDefending || false })}` : ""}
 CURRENT CONTEXT: ${player.context}
-
+LOCAL SETTLEMENT DATA: ${settlementData}
 RULES:
 - Write vivid immersive fantasy prose, 2-3 paragraphs
 - DO NOT offer numbered choices \u2014 the player uses a command panel to choose actions
@@ -2260,15 +2561,6 @@ function getItemSlotEx(itemName) {
   if (SET_PIECE_SLOT_MAP[itemName]) return SET_PIECE_SLOT_MAP[itemName];
   return _origGetItemSlot(itemName);
 }
-const LOCATION_TIERS = {
-  "Millhaven Village": "village",
-  "Thornwick Village": "village",
-  "Ashford Town": "town",
-  "Irongate Town": "town",
-  "Duskwall City": "city",
-  "Solara City": "city",
-  "Aethermoor Capital": "capital"
-};
 const INN_PRICES = { village: 5, town: 10, city: 20, capital: 30 };
 const RATION_ITEMS = ["Rations x3", "Rations x2", "Rations x1", "Rations", "Dried Meat", "Trail Bread", "Salted Fish", "Iron Rations"];
 function countRations(inventory) {
@@ -3203,9 +3495,56 @@ function StandingsScreen({ player, T, tf, bf, isDyslexic, onClose }) {
 function AethermoorRPG() {
   const [screen, setScreen] = useState("loading");
   const [themeKey, setThemeKey] = useState("standard");
-  // ── Patreon session ──────────────────────────────────────
-  const [patreonSession, setPatreonSession] = useState(null);
-  // { token, isSubscriber, tier } — null means not logged in (demo mode)
+  // ── Player ID — unique per browser, persists across sessions ─────────
+  const playerId = React.useMemo(() => {
+    let id = localStorage.getItem('aethermoor_player_id');
+    if (!id) {
+      id = 'player_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('aethermoor_player_id', id);
+    }
+    return id;
+  }, []);
+
+  // ── Token system ──────────────────────────────────────────────────────
+  // Balance is tracked on the backend (PostgreSQL). Local state is a mirror.
+  const [tokens, setTokens] = React.useState(50);
+  const [paymentSuccess, setPaymentSuccess] = React.useState(false);
+
+  // Load token balance from backend on startup
+  React.useEffect(() => {
+    fetch(`${BACKEND_URL}/tokens/balance?playerId=${encodeURIComponent(playerId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && typeof d.balance === 'number') setTokens(d.balance); })
+      .catch(() => {});
+    // Check if returning from a Stripe payment
+    if (window.location.search.includes('payment=success')) {
+      setPaymentSuccess(true);
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setPaymentSuccess(false), 8000);
+    }
+  }, [playerId]);
+
+  const spendToken = () => setTokens(prev => Math.max(0, prev - 1));
+
+  // Buy tokens — calls backend which returns a Stripe checkout URL
+  const buyTokens = async (pkg) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/tokens/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId, package: pkg }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert('Could not start checkout. Please try again.');
+      }
+    } catch (e) {
+      alert('Could not reach the server. Check your connection and try again.');
+    }
+  };
+
   const [playerName, setPlayerName] = useState("");
   const [selClass, setSelClass] = useState(null);
   const [player, setPlayer] = useState(null);
@@ -3249,131 +3588,8 @@ function AethermoorRPG() {
   const dyxNarr = isDyslexic ? { fontSize: 18, lineHeight: 2.1, letterSpacing: "0.04em", wordSpacing: "0.18em", textAlign: "left" } : {};
   const tf = { fontFamily: "'Cinzel','Palatino Linotype',serif", ...dyxTitle };
   const bf = { fontFamily: "'Crimson Text',Georgia,serif", color: T.text, ...dyxBody };
-  useEffect(() => {
-    async function load() {
-      try {
-        const st = await storageGet("rpg-theme");
-        if (st) setThemeKey(st.value);
 
-        // ── Patreon session handling ────────────────────────────────────
-        // Check if Patreon just redirected back with a session token in the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlSession   = urlParams.get("session");
-        const urlSubscriber = urlParams.get("subscriber");
-        const urlTier      = urlParams.get("tier");
-        const authError    = urlParams.get("auth");
 
-        if (urlSession) {
-          // New login — store token and clean up URL
-          localStorage.setItem("aethermoor_session", urlSession);
-          const sessionData = { token: urlSession, isSubscriber: urlSubscriber === "true", tier: decodeURIComponent(urlTier || "Tavern Regular") };
-          setPatreonSession(sessionData);
-          // Remove ?session=... from address bar without reloading
-          window.history.replaceState({}, "", window.location.pathname);
-        } else if (authError === "cancelled") {
-          window.history.replaceState({}, "", window.location.pathname);
-        } else if (authError === "error") {
-          window.history.replaceState({}, "", window.location.pathname);
-          console.warn("Patreon auth error");
-        } else {
-          // No URL token — check localStorage for a saved one
-          const storedToken = localStorage.getItem("aethermoor_session");
-          if (storedToken) {
-            try {
-              const verifyRes = await fetch(`${BACKEND_URL}/auth/verify`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: storedToken }),
-              });
-              if (verifyRes.ok) {
-                const verifyData = await verifyRes.json();
-                if (verifyData.valid) {
-                  setPatreonSession({ token: storedToken, isSubscriber: verifyData.isSubscriber, tier: verifyData.tier });
-                } else {
-                  // Token expired or invalid — clear it
-                  localStorage.removeItem("aethermoor_session");
-                }
-              }
-            } catch {
-              // Verification failed (server down etc.) — don't block the game
-            }
-          }
-        }
-
-        // ── Load saved game ─────────────────────────────────────────────
-        const sp = await storageGet("rpg-player");
-        const ss = await storageGet("rpg-seed");
-        if (sp && ss) {
-          const loadedPlayer = JSON.parse(sp.value);
-          // If they've logged in with Patreon since last play, unlock them now
-          const currentSession = urlSession
-            ? { isSubscriber: urlSubscriber === "true", tier: decodeURIComponent(urlTier || "Tavern Regular") }
-            : (localStorage.getItem("aethermoor_session") ? null : null); // will be set by verify above
-          // We apply session upgrade after verify completes — handled via patreonSession effect
-          setPlayer(loadedPlayer);
-          setWorldSeed(JSON.parse(ss.value));
-          try {
-            setMessages(JSON.parse((await storageGet("rpg-messages"))?.value || "[]"));
-          } catch {
-            setMessages([]);
-          }
-          try {
-            setNarrative((await storageGet("rpg-narrative"))?.value || "");
-          } catch {
-            setNarrative("");
-          }
-          try {
-            setLog(JSON.parse((await storageGet("rpg-log"))?.value || "[]"));
-          } catch {
-            setLog([]);
-          }
-          setScreen("game");
-        } else setScreen("title");
-      } catch {
-        setScreen("title");
-      }
-    }
-    load();
-  }, []);
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [log, narrative]);
-
-  // When patreon session verified, upgrade any existing loaded save
-  useEffect(() => {
-    if (!patreonSession || !player) return;
-    const isDemo = !patreonSession.isSubscriber;
-    if (player.isDemo !== isDemo) {
-      const upgraded = { ...player, isDemo, patreonTier: patreonSession.tier || "Wanderer" };
-      setPlayer(upgraded);
-      saveGame(upgraded, worldSeed, messages, narrative, log);
-      if (!isDemo) queueLevelUpMsg("\u{1F451} " + patreonSession.tier + " unlocked! Full game access granted.", 7000);
-    }
-  }, [patreonSession]);
-
-  async function handlePatreonLogin() {
-    window.location.href = `${BACKEND_URL}/auth/patreon`;
-  }
-
-  async function handlePatreonLogout() {
-    const token = patreonSession && patreonSession.token;
-    if (token) {
-      try {
-        await fetch(BACKEND_URL + "/auth/logout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
-      } catch (e) { /* ignore */ }
-    }
-    localStorage.removeItem("aethermoor_session");
-    setPatreonSession(null);
-    if (player) {
-      const demoted = { ...player, isDemo: true, patreonTier: "Wanderer" };
-      setPlayer(demoted);
-      saveGame(demoted, worldSeed, messages, narrative, log);
-    }
-  }
 
   async function saveGame(p, seed, msgs, narr, lg) {
     try {
@@ -3437,7 +3653,7 @@ function AethermoorRPG() {
     }, duration);
   }
   function grantXP(p, amount) {
-    const levelCap = p.isDemo ? 5 : 20;
+    const levelCap = 20;
     const newXp = p.xp + amount;
     const newLvl = Math.min(levelCap, xpToLevel(newXp));
     let u = { ...p, xp: newXp, level: newLvl };
@@ -3445,10 +3661,6 @@ function AethermoorRPG() {
       const maxHp = hpForLevel(CLASSES[p.class].hp, newLvl);
       u = { ...u, maxHp, hp: Math.min(p.hp + 10, maxHp), statPoints: (p.statPoints || 0) + 3 };
       queueLevelUpMsg(`\u{1F31F} LEVEL UP! Now level ${newLvl}! +3 Stat Points!`, 5e3);
-    }
-    if (p.isDemo && newLvl >= 5 && p.level < 5) {
-      // just hit the cap — show upgrade prompt
-      queueLevelUpMsg(`\u{1F451} Level 5 reached! Upgrade on Patreon to keep going.`, 8e3);
     }
     return u;
   }
@@ -3520,17 +3732,18 @@ function AethermoorRPG() {
       templateIcon: seed.templateIcon
     };
     const { count: ngCount = 0, perks: ngPerks = [], items: ngItems = [] } = legacyNGPlus;
-    // isDemo = false if player is a verified Patreon subscriber
-    const isDemo = !(patreonSession?.isSubscriber);
+    // Start in a random village or hamlet — gives a humble origin
+    const starterSettlements = WORLD_DATA.filter(s => s.type === 'village' || s.type === 'hamlet');
+    const randomStart = starterSettlements[Math.floor(Math.random() * starterSettlements.length)].name;
+
     let p = {
-      ...INIT_PLAYER(playerName.trim(), selClass),
-      quests: [mainQuestEntry],
+  ...INIT_PLAYER(playerName.trim(), selClass),
+  location: randomStart,
+  quests: [mainQuestEntry],
       gravestones: legacyGravestones,
       ngPlusCount: ngCount,
       legacyPerks: ngPerks,
       legacyItems: ngItems,
-      isDemo,
-      patreonTier: patreonSession?.tier || "Wanderer",
     };
     for (const perkId of ngPerks) {
       const perkDef = NG_PLUS_PERKS.find((pk) => pk.id === perkId);
@@ -3752,6 +3965,11 @@ function AethermoorRPG() {
   }
   async function handleCommand(cmdId) {
     if (isLoading) return;
+    if (tokens <= 0) {
+      setScreen('out_of_tokens');
+      return;
+    }
+    spendToken();
     setIsLoading(true);
     let msg = CMD_MESSAGES[cmdId] || cmdId;
     const newLog = [...log, { type: "choice", text: `> ${COMMAND_GROUPS.flatMap((g) => g.commands).find((c) => c.id === cmdId)?.icon || ""} ${msg}` }];
@@ -3761,10 +3979,17 @@ function AethermoorRPG() {
     const newMsgs = [...trimmedMsgs, { role: "user", content: msg }];
     let response;
     try {
-      response = await callClaude(newMsgs, NARRATOR_SYSTEM(player, worldSeed));
+      response = await callClaude(newMsgs, NARRATOR_SYSTEM(player, worldSeed), playerId, setTokens);
     } catch (err) {
       setNarrative("The world grows quiet. Something interrupted the story — please try again.");
       queueLevelUpMsg("\u26A0\uFE0F Connection error. Try again.", 5000);
+      setIsLoading(false);
+      return;
+    }
+    // Backend says tokens are exhausted
+    if (response === '__OUT_OF_TOKENS__') {
+      setTokens(0);
+      setScreen('out_of_tokens');
       setIsLoading(false);
       return;
     }
@@ -4158,16 +4383,6 @@ function AethermoorRPG() {
       const isEntering = cmdId === "dungeon" && !u.dungeon;
       const currentFloor = u.dungeon?.floor || 0;
       const nextFloor = isEntering ? 1 : currentFloor + 1;
-      // ── Wanderer demo cap: floor 3 ──────────────────────────────────────
-      if (u.isDemo && nextFloor > 3) {
-        const capMsg = `The stairs descend into impenetrable darkness. Something ancient and immovable bars your path.\n\nYou have reached the limit of the free demo. Upgrade to Adventurer or above on Patreon to descend further into the Dungeon of Echoes.\n\n{"context":"dungeon"}`;
-        const finalLog2 = [...newLog, { type: "system", text: "\u{1F451} Demo limit — dungeon floor 3 reached. Upgrade on Patreon to continue." }];
-        setLog(finalLog2);
-        setNarrative(capMsg.replace(/\{[^}]+\}$/,"").trim());
-        await saveGame(u, worldSeed, messages, capMsg, finalLog2);
-        setIsLoading(false);
-        return;
-      }
       const ngPlus = u.ngPlusCount || 0;
       const isEchoFloorNow = isEchoFloor(nextFloor);
       let echoEnemy = null;
@@ -4374,15 +4589,51 @@ function AethermoorRPG() {
         const newWeather = advanceWeather(u.travel.weather || "clear", road.weatherPattern || "clear");
         const isNight = newStepCount % 4 >= 2;
         const stepsSinceEncounter = u.travel.totalSteps - newStepsRemaining - (u.travel.lastEncounterStep || 0);
-        const isStorm = newWeather === "storm";
+        const isStorm    = newWeather === "storm";
+        const isRain     = newWeather === "rain";
+        const isBadWeather = isStorm || isRain;
+
+        // ── Weather delay ─────────────────────────────────────────────────
+        // Storm always adds 1 extra step. Rain has a 40% chance of +1 step.
+        // This makes bad weather journeys take longer, not just look different.
+        let weatherDelay = 0;
+        if (isStorm) weatherDelay = 1;
+        else if (isRain && Math.random() < 0.40) weatherDelay = 1;
+        const delayedStepsRemaining = newStepsRemaining + weatherDelay;
+
+        // ── Ration consumption during bad weather ─────────────────────────
+        // Storm always burns through an extra ration (cold, wet, exhausting).
+        // Rain has a 50% chance of consuming one. No rations = HP drain instead.
+        let weatherRationMsg = "";
+        if (isBadWeather) {
+          const shouldConsumeRation = isStorm || (isRain && Math.random() < 0.50);
+          if (shouldConsumeRation) {
+            const hasRation = countRations(u.inventory) > 0;
+            if (hasRation) {
+              u = { ...u, inventory: removeOneRation(u.inventory) };
+              weatherRationMsg = isStorm
+                ? "🌩️ The storm is exhausting — you eat through an extra ration to keep going."
+                : "🌧️ The rain and cold drain your energy — you consume an extra ration.";
+            } else {
+              // No rations — HP drain from exposure
+              const drain = isStorm ? 8 : 4;
+              const minHp = Math.max(1, Math.floor(u.maxHp * 0.05));
+              u = { ...u, hp: Math.max(minHp, u.hp - drain) };
+              weatherRationMsg = isStorm
+                ? `⚠️ No rations left — the storm batters you. -${drain} HP from exposure.`
+                : `⚠️ No rations left — the cold rain saps your strength. -${drain} HP.`;
+            }
+          }
+        }
+
         const encounterChance = isStorm ? 1 : getEncounterChance(road.danger || 2, isNight, stepsSinceEncounter, u.legacyPerks);
         const hasEncounter = Math.random() < encounterChance;
-        u = { ...u, travel: { ...u.travel, stepsRemaining: newStepsRemaining, stepCount: newStepCount, weather: newWeather } };
+        u = { ...u, travel: { ...u.travel, stepsRemaining: delayedStepsRemaining, stepCount: newStepCount, weather: newWeather } };
         let responseProse, finalMsgsTravel;
         if (hasEncounter) {
           const combatFrac = isStorm ? 0 : getCombatFraction(road.danger || 2, isNight);
           const isCombatEnc = Math.random() < combatFrac;
-          const combatType = isCombatEnc ? pickCombatEncounterType(road, isNight) : null;
+          const combatType = isCombatEnc ? pickCombatEncounterType(road, isNight, newWeather) : null;
           u = { ...u, travel: {
             ...u.travel,
             lastEncounterStep: u.travel.totalSteps - newStepsRemaining,
@@ -4403,8 +4654,10 @@ function AethermoorRPG() {
           finalMsgsTravel = [...newMsgs, { role: "assistant", content: enc.prose }];
           newLog.push({ type: "system", text: `${enc.encounterType.icon || "\u26A0\uFE0F"} ${enc.encounterType.label}${isNight ? " \xB7 \u{1F319} Night" : ""}${newWeather !== "clear" ? " \xB7 " + WEATHER_ICONS[newWeather] + " " + newWeather : ""}` });
           if (enc.isCombat) newLog.push({ type: "system", text: `\u2694\uFE0F Road combat \u2014 ${combatType.label}` });
+          if (weatherRationMsg) newLog.push({ type: "system", text: weatherRationMsg });
         } else {
-          const stepsDesc = newStepsRemaining === 1 ? "the final stretch, your destination now visible ahead" : newStepsRemaining === 2 ? "nearing your destination" : `still ${newStepsRemaining} steps from ${u.travel.destination}`;
+          const delayNote = weatherDelay > 0 ? " (the bad weather has slowed your progress)" : "";
+          const stepsDesc = delayedStepsRemaining === 1 ? `the final stretch, your destination now visible ahead${delayNote}` : delayedStepsRemaining === 2 ? `nearing your destination${delayNote}` : `still ${delayedStepsRemaining} steps from ${u.travel.destination}${delayNote}`;
           const timeCtx = isNight ? "It is night \u2014 describe the road by moonlight, fireflies, distant lights, unnerving quiet or sounds." : "It is daytime.";
           const weatherCtx = newWeather !== "clear" ? `Weather: ${WEATHER_DESC[newWeather] || newWeather}. Weave this into the description \u2014 how does it affect the road, the player's mood, what they can and can't see?` : "";
           const stormCtx = isStorm ? "A violent storm has forced you to seek shelter. Describe finding shelter \u2014 a waystation, an abandoned barn, a cave, the underside of a great tree. Someone or something else may be sheltering there too." : "";
@@ -4414,9 +4667,13 @@ function AethermoorRPG() {
           finalMsgsTravel = [...travelMsg, { role: "assistant", content: travelResponse }];
         }
         const progressPct = Math.round((u.travel.totalSteps - newStepsRemaining) / u.travel.totalSteps * 100);
+        const weatherDelayNote = weatherDelay > 0
+          ? ` \xB7 ${WEATHER_ICONS[newWeather] || "\u{1F327}"} Delayed by weather`
+          : (newWeather !== "clear" ? ` \xB7 ${WEATHER_ICONS[newWeather]} ${newWeather}` : "");
         const travelLog = [
           ...newLog,
-          { type: "system", text: `\u{1F6B6} ${road?.name || "Road"} \xB7 ${newStepsRemaining} step${newStepsRemaining !== 1 ? "s" : ""} to ${u.travel.destination} (${progressPct}%)` },
+          { type: "system", text: `\u{1F6B6} ${road?.name || "Road"} \xB7 ${delayedStepsRemaining} step${delayedStepsRemaining !== 1 ? "s" : ""} to ${u.travel.destination} (${progressPct}%)${weatherDelayNote}` },
+          ...(weatherRationMsg ? [{ type: "system", text: weatherRationMsg }] : []),
           { type: "xp", text: `+${xpGain} XP` }
         ];
         setPlayer(u);
@@ -4805,27 +5062,80 @@ function AethermoorRPG() {
       }
     },
     "Begin Your Legend"
-  ), /* Patreon login section on title screen */
-  React.createElement("div", { style: { marginTop: 24, borderTop: "1px solid " + T.border, paddingTop: 24, textAlign: "center" } },
-    React.createElement("div", { style: { color: T.textMuted, fontSize: 12, marginBottom: 14, letterSpacing: 1 } },
-      patreonSession && patreonSession.isSubscriber
-        ? "\u2713 Logged in as " + patreonSession.tier + " — full game unlocked"
-        : "Patreon subscriber? Log in to unlock the full game."
+  ), /* Token section */
+  React.createElement("div", { style: { marginTop: 24, borderTop: "1px solid #5c4a33", paddingTop: 20, textAlign: "center" } },
+    paymentSuccess && React.createElement("div", { style: { background: "#2a5c2a", border: "1px solid #4a9c4a", color: "#90d890", padding: "10px 16px", marginBottom: 16, fontSize: 13, borderRadius: 3 } },
+      "✅ Payment successful! Your tokens have been added."
     ),
-    patreonSession && patreonSession.isSubscriber
-      ? React.createElement("button", {
-          onClick: handlePatreonLogout,
-          style: { background: "transparent", border: "1px solid " + T.border, color: T.textMuted,
-                   padding: "8px 20px", fontSize: 12, cursor: "pointer", fontFamily: "Crimson Text,serif" }
-        }, "Log out of Patreon")
-      : React.createElement("button", {
-          onClick: handlePatreonLogin,
-          style: { background: "#f96854", border: "none", color: "#fff",
-                   padding: "11px 28px", fontSize: 13, cursor: "pointer",
-                   fontFamily: "Cinzel,serif", letterSpacing: 2, borderRadius: 4 }
-        }, "\u{1F451} Login with Patreon")
+    React.createElement("div", { style: { color: "#c9a84c", fontSize: 13, marginBottom: 10 } },
+      "Tokens remaining: " + tokens
+    ),
+    tokens < 20 ? React.createElement("div", { style: { color: "#e06050", fontSize: 11, marginBottom: 10 } },
+      "Running low on tokens!"
+    ) : null,
+    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, alignItems: "center" } },
+      [
+        { pkg: "starter",    label: "Starter Pack",    detail: "100 tokens  ·  £1.00" },
+        { pkg: "adventurer", label: "Adventurer Pack", detail: "300 tokens  ·  £2.50" },
+        { pkg: "hero",       label: "Hero Pack",       detail: "750 tokens  ·  £5.00" },
+        { pkg: "legend",     label: "Legend Pack",     detail: "1,500 tokens  ·  £9.99" },
+      ].map(({ pkg, label, detail }) =>
+        React.createElement("button", {
+          key: pkg,
+          onClick: () => buyTokens(pkg),
+          style: { background: "#c9a84c", color: "#0d0a06", padding: "9px 24px", width: 240,
+                   fontFamily: "Georgia,serif", fontSize: 13, cursor: "pointer",
+                   borderRadius: 3, fontWeight: "bold", border: "none",
+                   letterSpacing: "0.05em", display: "flex", justifyContent: "space-between",
+                   alignItems: "center" }
+        },
+          React.createElement("span", null, label),
+          React.createElement("span", { style: { fontSize: 11, opacity: 0.8 } }, detail)
+        )
+      )
+    ),
+    React.createElement("div", { style: { color: "#8a7a5f", fontSize: 10, marginTop: 10 } },
+      "Each turn uses 1 token. Tokens never expire."
+    )
   )
   ));
+  // ── Out of tokens screen ──────────────────────────────────────────────
+  if (screen === 'out_of_tokens') return React.createElement("div", { style: { ...bf, background: "#0d0a06", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 } },
+    React.createElement("style", null, gf),
+    React.createElement("div", { style: { maxWidth: 480, width: "100%", textAlign: "center" } },
+      React.createElement("div", { style: { color: "#c9a84c", fontSize: 32, marginBottom: 8 } }, "🪙"),
+      React.createElement("h2", { style: { ...tf, color: "#c9a84c", fontSize: 24, letterSpacing: 3, marginBottom: 12 } }, "YOUR TOKENS ARE SPENT"),
+      React.createElement("p", { style: { color: "#8a7a5f", fontFamily: "Crimson Text,serif", fontSize: 15, marginBottom: 28, lineHeight: 1.6 } },
+        "The narrator's voice fades to silence. Your adventure awaits — purchase more tokens to continue your legend."
+      ),
+      React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, alignItems: "center" } },
+        [
+          { pkg: "starter",    label: "Starter Pack",    detail: "100 tokens — £1.00" },
+          { pkg: "adventurer", label: "Adventurer Pack", detail: "300 tokens — £2.50" },
+          { pkg: "hero",       label: "Hero Pack",       detail: "750 tokens — £5.00" },
+          { pkg: "legend",     label: "Legend Pack",     detail: "1,500 tokens — £9.99" },
+        ].map(({ pkg, label, detail }) =>
+          React.createElement("button", {
+            key: pkg,
+            onClick: () => buyTokens(pkg),
+            style: { background: "#c9a84c", color: "#0d0a06", padding: "10px 28px", width: 260,
+                     fontFamily: "Georgia,serif", fontSize: 13, cursor: "pointer",
+                     borderRadius: 3, fontWeight: "bold", border: "none",
+                     letterSpacing: "0.05em", display: "flex", justifyContent: "space-between" }
+          },
+            React.createElement("span", null, label),
+            React.createElement("span", { style: { fontSize: 11, opacity: 0.8 } }, detail)
+          )
+        )
+      ),
+      React.createElement("button", {
+        onClick: () => setScreen("title"),
+        style: { background: "transparent", border: "1px solid #5c4a33", color: "#8a7a5f",
+                 padding: "8px 20px", marginTop: 20, cursor: "pointer", fontSize: 12,
+                 fontFamily: "Georgia,serif", borderRadius: 3 }
+      }, "← Return to Title")
+    )
+  );
   if (screen === "create") return /* @__PURE__ */ React.createElement("div", { style: { ...bf, background: T.bg, minHeight: "100vh", padding: 24, display: "flex", flexDirection: "column", alignItems: "center" } }, /* @__PURE__ */ React.createElement("style", null, gf), /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, width: "100%" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: "none", color: T.textMuted, cursor: "pointer", fontSize: 13, marginBottom: 18, fontFamily: "Crimson Text,serif", padding: 0 } }, "\u2190 Vision Settings / Title"), /* @__PURE__ */ React.createElement("h2", { style: { ...tf, color: T.gold, fontSize: 28, letterSpacing: 3, textAlign: "center", marginBottom: 8 } }, "FORGE YOUR HERO"), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textMuted, marginBottom: legacyGravestones.length > 0 ? 16 : 32, fontSize: 13, letterSpacing: 1 } }, "Choose wisely. Your legend begins here."), legacyGravestones.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: "12px 16px", marginBottom: 24 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.textMuted, fontSize: 10, letterSpacing: 2, marginBottom: 8, textAlign: "center" } }, "THOSE WHO CAME BEFORE"), legacyGravestones.slice(-3).map((g, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { borderTop: i > 0 ? `1px solid ${T.border}` : "none", paddingTop: i > 0 ? 8 : 0, marginTop: i > 0 ? 8 : 0 } }, /* @__PURE__ */ React.createElement("div", { style: { color: T.text, fontSize: 12 } }, g.name, " the ", g.class, " \xB7 Lv.", g.level), /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 11, fontStyle: "italic", fontFamily: "Crimson Text,serif" } }, g.epitaph)))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 26 } }, /* @__PURE__ */ React.createElement("label", { style: { ...tf, color: T.accent, fontSize: 12, letterSpacing: 2, display: "block", marginBottom: 8 } }, "YOUR NAME"), /* @__PURE__ */ React.createElement(
     "input",
     {
@@ -4953,16 +5263,7 @@ function AethermoorRPG() {
         @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
-      `), /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 14, letterSpacing: 2 } }, "\u2694 AETHERMOOR"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, levelUpMsg && /* @__PURE__ */ React.createElement("div", { style: { color: T.gold, fontSize: 10, animation: "pulse 1s infinite", ...tf, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, levelUpMsg), ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F6D2}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F392}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6, position: "relative" } }, "\u{1F4DC}", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", ...tf } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u2B50"), /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F441}"), /* @__PURE__ */ patreonSession && patreonSession.isSubscriber
-        ? React.createElement("span", { style: { fontSize: 10, color: "#f96854", border: "1px solid #f9685444",
-            padding: "3px 7px", borderRadius: 4, fontFamily: "Cinzel,serif", letterSpacing: 1, cursor: "pointer" },
-            onClick: handlePatreonLogout, title: "Logged in as " + (patreonSession.tier || "") + " — click to log out" },
-            "\u{1F451} " + (patreonSession.tier || ""))
-        : React.createElement("button", { onClick: handlePatreonLogin,
-            style: { background: "transparent", border: "1px solid #f9685488", color: "#f96854",
-                     padding: "3px 7px", fontSize: 9, cursor: "pointer", borderRadius: 4,
-                     fontFamily: "Cinzel,serif", letterSpacing: 1 },
-            title: "Log in with Patreon to unlock full game" }, "Patreon"),
+      `), /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 14, letterSpacing: 2 } }, "\u2694 AETHERMOOR"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, levelUpMsg && /* @__PURE__ */ React.createElement("div", { style: { color: T.gold, fontSize: 10, animation: "pulse 1s infinite", ...tf, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, levelUpMsg), ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F6D2}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F392}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6, position: "relative" } }, "\u{1F4DC}", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", ...tf } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u2B50"), /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F441}"), /* @__PURE__ */ "Tokens: " + tokens,
 React.createElement("button", { onClick: clearSave, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 8px", fontSize: 10, cursor: "pointer", borderRadius: 6, ...tf, letterSpacing: 1 } }, "NEW"))), player && /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, borderBottom: `1px solid ${T.border}`, padding: "6px 12px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement(
     "button",
     {
