@@ -1605,6 +1605,8 @@ const INIT_PLAYER = (name, cls) => ({
 // ── Backend URL ──────────────────────────────────────────────────────────
 // Live Railway server — update this if the backend URL ever changes.
 const BACKEND_URL = "https://aethermoor-backend-production.up.railway.app";
+const tokenColor = (t) => t > 50 ? '#80c060' : t > 20 ? '#c9a84c' : t > 10 ? '#e08030' : '#e04040';
+const tokenBorder = (t) => t > 50 ? '#80c06044' : t > 20 ? '#c9a84c44' : t > 10 ? '#e0803066' : '#e0404066';
 const _gt = "aethermoor_x7k2p9q4mpoweiuyugfv9p83vy45i87w3y5t02vn57pqwyt98w3ytbp983qw4yt9a8yt9oq8i3uyt908q34yu5o81m3uy0oiv5mqc4u0iqmwuv4";
 // Shared secret — must match GAME_TOKEN in Railway Variables
 
@@ -1678,47 +1680,19 @@ async function backendFetch(payload, onTokenUpdate) {
 }
 
 async function callClaude(messages, system, playerIdArg, onTokenUpdate) {
-  const playerId = playerIdArg || window.__aethermoorPlayerId || localStorage.getItem('aethermoor_player_id') || 'unknown';
-  // ── Screen player input before sending to narrator ───────────────────────
-  const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-  if (lastUserMsg && lastUserMsg.content) {
-    try {
-      const screenRes = await fetch(`${BACKEND_URL}/api/claude`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Game-Token": _gt },
-        body: JSON.stringify({
-          type:       "screen",
-          playerId,
-          _gt,
-          model:      "claude-haiku-4-5-20251001",
-          max_tokens: 5,
-          system:     SCREEN_SYSTEM,
-          messages:   [{ role: "user", content: String(lastUserMsg.content).slice(0, 500) }],
-        }),
-      });
-      if (screenRes.ok) {
-        const screenData = await screenRes.json();
-        const verdict = screenData.content?.map(b => b.text || "").join("").trim().toUpperCase();
-        if (verdict === "BLOCK") {
-          return `The narrator pauses, as if the world itself draws breath.\n\nThat is not a path this story will walk. The shadows hold their silence. Your adventure lies elsewhere — what would you do next?\n\n{"context":"explore"}`;
-        }
-      }
-    } catch (err) {
-      // Screen failed — fail open so the game still works
-      console.warn("Content screen error:", err.message);
-    }
-  }
-
-  // ── Normal narrator call via backend ─────────────────────────────────────
+  const pid = playerIdArg
+    || window.__aethermoorPlayerId
+    || localStorage.getItem('aethermoor_player_id')
+    || 'unknown';
+  console.log('[callClaude] pid=', pid, 'arg=', playerIdArg);
   return backendFetch({
-    type:       "narrator",
-    playerId,
-    model:      "claude-sonnet-4-20250514",
+    playerId:   pid,
     max_tokens: 900,
-    system,
+    system:     system || '',
     messages,
   }, onTokenUpdate);
 }
+
 const NARRATOR_SYSTEM = (player, worldSeed) => {
   const repTier = getRepTier(player.reputation || 0);
   const factionSummary = Object.entries(player.factionStandings || {}).map(([id, xp]) => {
@@ -6253,7 +6227,7 @@ function AethermoorRPG() {
           React.createElement("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 16 } },
             React.createElement("div", { style: { color: T.gold, fontSize: 15, ...tf } }, tokens),
             React.createElement("div", { style: { color: T.textMuted, fontSize: 12 } }, "tokens remaining"),
-            tokens < 20 && React.createElement("div", { style: { color: "#e06050", fontSize: 11 } }, "\u26A0\uFE0F Running low!")
+            tokens <= 50 && React.createElement("div", { style: { color: tokenColor(tokens), fontSize: 11, fontWeight: "bold", animation: tokens <= 10 ? "pulse 1s infinite" : "none" } }, tokens <= 10 ? "\u26A0\uFE0F Critical!" : tokens <= 20 ? "\u26A0\uFE0F Low!" : "\u26A0\uFE0F Running low!")
           ),
           React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, maxWidth: 420, margin: "0 auto" } },
             [
@@ -6447,7 +6421,7 @@ function AethermoorRPG() {
         @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
-      `), /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 14, letterSpacing: 2 } }, "\u2694 AETHERMOOR"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, levelUpMsg && /* @__PURE__ */ React.createElement("div", { style: { color: T.gold, fontSize: 10, animation: "pulse 1s infinite", ...tf, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, levelUpMsg), ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F6D2}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F392}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6, position: "relative" } }, "\u{1F4DC}", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", ...tf } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u2B50"), /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F441}"), /* @__PURE__ */ React.createElement("div", { onClick: () => setScreen("title"), style: { display: "flex", alignItems: "center", gap: 4, cursor: "pointer", padding: "4px 7px", border: `1px solid ${tokens < 20 ? "#e06050" : T.border}`, borderRadius: 6, background: tokens < 20 ? "#e0605022" : "transparent", transition: "all 0.2s" }, title: "Buy more tokens" }, React.createElement("span", null, "\u{1FA99}"), React.createElement("span", { style: { ...tf, fontSize: 12, color: tokens < 20 ? "#e06050" : T.gold, fontWeight: tokens < 20 ? "bold" : "normal" } }, tokens)),
+      `), /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 14, letterSpacing: 2 } }, "\u2694 AETHERMOOR"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, levelUpMsg && /* @__PURE__ */ React.createElement("div", { style: { color: T.gold, fontSize: 10, animation: "pulse 1s infinite", ...tf, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, levelUpMsg), ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F6D2}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F392}"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6, position: "relative" } }, "\u{1F4DC}", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", ...tf } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u2B50"), /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F441}"), /* @__PURE__ */ React.createElement("div", { onClick: () => setScreen("title"), style: { display: "flex", alignItems: "center", gap: 4, cursor: "pointer", padding: "4px 7px", border: `1px solid ${tokenBorder(tokens)}`, borderRadius: 6, background: tokens <= 10 ? "#e0404022" : "transparent", transition: "all 0.2s" }, title: "Buy more tokens" }, React.createElement("span", null, "\u{1FA99}"), React.createElement("span", { style: { ...tf, fontSize: 12, color: tokenColor(tokens), fontWeight: tokens <= 20 ? "bold" : "normal", animation: tokens <= 10 ? "pulse 1s infinite" : "none" } }, tokens)),
 React.createElement("button", { onClick: clearSave, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 8px", fontSize: 10, cursor: "pointer", borderRadius: 6, ...tf, letterSpacing: 1 } }, "NEW"))), player && /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, borderBottom: `1px solid ${T.border}`, padding: "6px 12px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement(
     "button",
     {
