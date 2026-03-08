@@ -4432,6 +4432,379 @@ function AethermoorRPG() {
 
 
 
+  async function saveGame(p, seed, msgs, narr, lg) {
+    try {
+      await storageSet("rpg-player", JSON.stringify(p));
+      await storageSet("rpg-seed", JSON.stringify(seed));
+      await storageSet("rpg-messages", JSON.stringify(msgs.slice(-20)));
+      await storageSet("rpg-narrative", narr);
+      await storageSet("rpg-log", JSON.stringify(lg.slice(-60)));
+    } catch {
+      // Save failed — warn the player so they know progress may be lost
+      queueLevelUpMsg("\u26A0\uFE0F Save failed — progress may not be stored. Try refreshing.", 7000);
+    }
+    if ((p.deepestFloor || 0) > 0) {
+      try {
+        const raw = await storageGet("rpg-dungeon-lb").catch(() => null);
+        const lb = raw ? JSON.parse(raw.value) : [];
+        const entry = {
+          name: p.name,
+          class: p.class,
+          level: p.level,
+          floor: p.deepestFloor,
+          ngPlus: p.ngPlusCount || 0,
+          killedBy: p.pendingGravestone?.killedBy || null,
+          perks: (p.legacyPerks || []).slice(0, 3),
+          timestamp: Date.now()
+        };
+        const existingIdx = lb.findIndex((e) => e.name === entry.name && e.class === entry.class);
+        if (existingIdx >= 0) {
+          if (entry.floor > lb[existingIdx].floor) lb[existingIdx] = entry;
+        } else {
+          lb.push(entry);
+        }
+        lb.sort((a, b) => b.floor - a.floor || b.ngPlus - a.ngPlus);
+        await storageSet("rpg-dungeon-lb", JSON.stringify(lb.slice(0, 20)));
+      } catch {
+      }
+    }
+  }
+  async function pickTheme(key) {
+    setThemeKey(key);
+    try {
+      await storageSet("rpg-theme", key);
+    } catch {
+    }
+  }
+  function queueLevelUpMsg(msg, duration = 5e3) {
+    levelUpQueue.current.push({ msg, duration });
+    if (!levelUpTimer.current) drainLevelUpQueue();
+  }
+  function drainLevelUpQueue() {
+    if (levelUpQueue.current.length === 0) {
+      levelUpTimer.current = null;
+      setLevelUpMsg("");
+      return;
+    }
+    const { msg, duration } = levelUpQueue.current.shift();
+    setLevelUpMsg(msg);
+    levelUpTimer.current = setTimeout(() => {
+      levelUpTimer.current = null;
+      drainLevelUpQueue();
+    }, duration);
+  }
+  function grantXP(p, amount) {
+    const levelCap = 20;
+    const newXp = p.xp + amount;
+    const newLvl = Math.min(levelCap, xpToLevel(newXp));
+    let u = { ...p, xp: newXp, level: newLvl };
+    if (newLvl > p.level) {
+      const maxHp = hpForLevel(CLASSES[p.class].hp, newLvl);
+      u = { ...u, maxHp, hp: Math.min(p.hp + 10, maxHp), statPoints: (p.statPoints || 0) + 3 };
+      queueLevelUpMsg(`\u{1F31F} LEVEL UP! Now level ${newLvl}! +3 Stat Points!`, 5e3);
+    }
+    return u;
+  }
+  function extractContext(text) {
+    const m = text.match(/\{"context"\s*:\s*"(\w+)"\}/);
+    return m ? m[1] : null;
+  }
+  function extractNpcTag(text) {
+    const m = text.match(/\{"npc"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try {
+      return JSON.parse(m[1]);
+    } catch {
+      return null;
+    }
+  }
+  function extractNpcUpdateTag(text) {
+    const m = text.match(/\{"npcUpdate"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try {
+      return JSON.parse(m[1]);
+    } catch {
+      return null;
+    }
+  }
+  function registerNpc(player2, npcData, currentLocation, currentAct) {
+    const existing = (player2.knownNpcs || []).find((n) => n.name.toLowerCase() === npcData.name.toLowerCase());
+    if (existing) {
+      const updated = { ...existing, ...npcData, lastSeen: currentLocation };
+      return { ...player2, knownNpcs: (player2.knownNpcs || []).map((n) => n.name.toLowerCase() === npcData.name.toLowerCase() ? updated : n) };
+    }
+    const newNpc = {
+      name: npcData.name,
+      role: npcData.role || "Unknown",
+      relationship: npcData.relationship || "neutral",
+      notes: npcData.notes || "",
+      location: currentLocation,
+      lastSeen: currentLocation,
+      firstMet: currentAct || 1,
+      questGiver: npcData.questGiver || false
+    };
+    let roster = [...player2.knownNpcs || [], newNpc];
+    if (roster.length > 20) {
+      const dropIdx = roster.findIndex((n) => !n.questGiver);
+      if (dropIdx >= 0) roster.splice(dropIdx, 1);
+    }
+    return { ...player2, knownNpcs: roster };
+  }
+  function stripContextTag(text) {
+    let t = text.replace(/\{"context"\s*:\s*"\w+"\}/g, "");
+    t = t.replace(/\{"npc"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"npcUpdate"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
+    t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
+    t = t.replace(/```[a-z]*\s*\{"context"\s*:\s*"\w+"\}\s*```/g, "");
+    t = t.replace(/```[a-z]*\s*```/g, "");
+    return t.trim();
+  }
+  async function startNewGame() {
+    if (!playerName.trim() || !selClass) return;
+    setIsLoading(true);
+    const seed = await generateWorldSeed();
+    const mainQuestEntry = {
+      id: "main_" + Date.now(),
+      title: seed.questTitle,
+      objective: "Investigate the growing darkness across Aethermoor",
+      status: "active",
+      isMain: true,
+      templateIcon: seed.templateIcon
+    };
+    const { count: ngCount = 0, perks: ngPerks = [], items: ngItems = [] } = legacyNGPlus;
+    // Start in a random village or hamlet — gives a humble origin
+    const starterSettlements = WORLD_DATA.filter(s => s.type === 'village' || s.type === 'hamlet');
+    const randomStart = starterSettlements[Math.floor(Math.random() * starterSettlements.length)].name;
+
+    let p = {
+  ...INIT_PLAYER(playerName.trim(), selClass),
+  location: randomStart,
+  quests: [mainQuestEntry],
+      gravestones: legacyGravestones,
+      ngPlusCount: ngCount,
+      legacyPerks: ngPerks,
+      legacyItems: ngItems,
+    };
+    for (const perkId of ngPerks) {
+      const perkDef = NG_PLUS_PERKS.find((pk) => pk.id === perkId);
+      if (perkDef) p = perkDef.apply(p);
+    }
+    for (const item of ngItems) {
+      p = { ...p, inventory: [...p.inventory || [], item.name] };
+    }
+    if (ngCount > 0 && legacyNGPlus.gold !== void 0) {
+      p = {
+        ...p,
+        gold: (legacyNGPlus.gold || 0) + p.gold,
+        // legacy gold + starting gold
+        reputation: legacyNGPlus.reputation || 0,
+        factionStandings: legacyNGPlus.factionStandings || p.factionStandings
+      };
+      if (legacyNGPlus.level > 1) {
+        const ngLevel = legacyNGPlus.level;
+        const ngXp = legacyNGPlus.xp || 0;
+        const ngMaxHp = hpForLevel(CLASSES[selClass].hp, ngLevel);
+        p = { ...p, level: ngLevel, xp: ngXp, maxHp: ngMaxHp, hp: ngMaxHp };
+      }
+      if (legacyNGPlus.equipped) p = { ...p, equipped: legacyNGPlus.equipped };
+      if (legacyNGPlus.inventory) p = { ...p, inventory: [...legacyNGPlus.inventory || [], ...p.inventory || []] };
+    }
+    setWorldSeed(seed);
+    setPlayer(p);
+    setMessages([]);
+    setLog([]);
+    const intro = await callClaude(
+      [{ role: "user", content: `Begin the adventure. I am ${p.name}, a ${p.class}. Paint the opening scene in ${p.location}. The world has a shadow over it \u2014 ${seed.act1Hook}. Don't name the villain yet. Describe the world around me richly with this dread woven in naturally so I know what I can do. One first hint of the main quest hook should colour the atmosphere.` }],
+      NARRATOR_SYSTEM(p, seed), playerId, setTokens
+    );
+    const ctx = extractContext(intro) || "explore";
+    const prose = stripContextTag(intro);
+    const msgs = [{ role: "user", content: "Begin the adventure." }, { role: "assistant", content: intro }];
+    const lg = [{ type: "system", text: "\u2694\uFE0F A new legend begins in Aethermoor..." }, { type: "system", text: `\u{1F4CD} ${p.location}` }];
+    const pWithCtx = { ...p, context: ctx };
+    setPlayer(pWithCtx);
+    setMessages(msgs);
+    setNarrative(prose);
+    setLog(lg);
+    await saveGame(pWithCtx, seed, msgs, prose, lg);
+    setScreen("game");
+    setIsLoading(false);
+  }
+  function grantFactionXP(p, factionId, amount) {
+    if (!factionId || !FACTIONS[factionId]) return p;
+    const standings = { ...p.factionStandings || {} };
+    const prevRank = getFactionRank(standings[factionId] || 0);
+    standings[factionId] = (standings[factionId] || 0) + amount;
+    const faction = FACTIONS[factionId];
+    Object.entries(FACTIONS).forEach(([rid, rf]) => {
+      if (rid !== factionId && rf.group === faction.group) {
+        standings[rid] = Math.max(0, (standings[rid] || 0) - Math.floor(amount * 0.3));
+      }
+    });
+    const joined = (p.joinedFactions || []).includes(factionId);
+    const MEMBER_XP = FACTION_XP_NEEDED[2];
+    const CHAMPION_XP = FACTION_XP_NEEDED[4];
+    if (!joined && standings[factionId] >= MEMBER_XP) {
+      standings[factionId] = MEMBER_XP - 1;
+    }
+    if (joined && standings[factionId] >= CHAMPION_XP) {
+      const hasChampionQuest = (p.quests || []).some(
+        (q) => q.factionChampion === factionId && q.status === "completed"
+      );
+      if (!hasChampionQuest) standings[factionId] = CHAMPION_XP - 1;
+    }
+    const newRank = getFactionRank(standings[factionId]);
+    let u = { ...p, factionStandings: standings };
+    if (newRank > prevRank) {
+      if (newRank === 1 && !(p.joinedFactions || []).includes(factionId) && p.pendingFactionOffer !== factionId) {
+        u = { ...u, pendingFactionOffer: factionId };
+        setTimeout(() => setShowFactionOffer(factionId), 600);
+      }
+      const abilityUnlock = FACTIONS[factionId].rankAbilities?.[newRank];
+      if (abilityUnlock && !u.abilities.includes(abilityUnlock)) {
+        u = { ...u, abilities: [...u.abilities, abilityUnlock] };
+        queueLevelUpMsg(`\u{1F3C5} ${FACTIONS[factionId].name}: ${FACTION_RANKS[newRank]}! Ability: ${abilityUnlock}!`, 6e3);
+      } else if (newRank !== 1) {
+        queueLevelUpMsg(`\u{1F3C5} ${FACTIONS[factionId].name}: ${FACTION_RANKS[newRank]}!`, 4e3);
+      }
+      if (newRank === 3 && joined) {
+        const rankGear = FACTION_RANK_GEAR[factionId]?.[3];
+        if (rankGear && !(u.inventory || []).includes(rankGear) && !Object.values(u.equipped || {}).includes(rankGear)) {
+          u = { ...u, inventory: [...u.inventory || [], rankGear] };
+          queueLevelUpMsg(`\u{1F381} ${FACTIONS[factionId].name} \u2014 Trusted: ${rankGear} awarded!`, 6e3);
+        }
+        const cq = FACTION_CHAMPION_QUESTS[factionId];
+        if (cq && !(p.quests || []).some((q) => q.factionChampion === factionId)) {
+          const championQuest = {
+            id: "champion_" + factionId + "_" + Date.now(),
+            title: cq.title,
+            objective: cq.objective,
+            status: "active",
+            factionChampion: factionId,
+            factionIcon: FACTIONS[factionId].icon
+          };
+          u = { ...u, quests: [...u.quests || [], championQuest] };
+          queueLevelUpMsg(`\u{1F4DC} Champion Quest: "${cq.title}" \u2014 ${FACTIONS[factionId].name}`, 7e3);
+        }
+      }
+      if (newRank === 4 && joined) {
+        const rankGear = FACTION_RANK_GEAR[factionId]?.[4];
+        if (rankGear && !(u.inventory || []).includes(rankGear) && !Object.values(u.equipped || {}).includes(rankGear)) {
+          u = { ...u, inventory: [...u.inventory || [], rankGear] };
+          queueLevelUpMsg(`\u{1F381} ${FACTIONS[factionId].name} \u2014 Champion: ${rankGear} awarded!`, 6e3);
+        }
+      }
+      if (newRank >= 5 && joined) {
+        const factionSet = FACTION_SETS[factionId];
+        if (factionSet) {
+          const newItems = factionSet.pieces.filter(
+            (piece) => !(u.inventory || []).includes(piece) && !Object.values(u.equipped || {}).includes(piece)
+          );
+          if (newItems.length > 0) {
+            u = { ...u, inventory: [...u.inventory || [], ...newItems] };
+            queueLevelUpMsg(`\u{1F3C6} ${FACTIONS[factionId].name} LEGEND \u2014 ${factionSet.name} complete!`, 8e3);
+          }
+        }
+      }
+    }
+    return u;
+  }
+  function grantLocationXP(p, location, amount) {
+    const loc = location || p.location;
+    const standings = { ...p.locationStandings || {} };
+    const prevRank = getLocationRank(standings[loc] || 0);
+    standings[loc] = (standings[loc] || 0) + amount;
+    const newRank = getLocationRank(standings[loc]);
+    let u = { ...p, locationStandings: standings };
+    u = { ...u, reputation: (u.reputation || 0) + Math.floor(amount * 0.2) };
+    if (newRank > prevRank) {
+      const tier = LOCATION_TIERS[loc] || "village";
+      const reward = LOCATION_REWARDS[tier]?.[newRank] || "You earn local recognition";
+      queueLevelUpMsg(`\u{1F4CD} ${loc}: ${LOCATION_RANKS[newRank]}! \u2014 ${reward}`, 6e3);
+    }
+    return u;
+  }
+  function handleJoinFaction(factionId) {
+    if (!player) return;
+    const offer = FACTION_JOIN_OFFERS[factionId];
+    if (!offer) return;
+    const standings = { ...player.factionStandings || {} };
+    standings[factionId] = Math.max(standings[factionId] || 0, FACTION_XP_NEEDED[2]);
+    let u = {
+      ...player,
+      factionStandings: standings,
+      joinedFactions: [...player.joinedFactions || [], factionId],
+      pendingFactionOffer: null
+    };
+    if (offer.gift && !(u.inventory || []).includes(offer.gift)) {
+      u = { ...u, inventory: [...u.inventory || [], offer.gift] };
+    }
+    if (offer.rival) {
+      const rivStandings = { ...u.factionStandings || {} };
+      rivStandings[offer.rival] = Math.max(0, (rivStandings[offer.rival] || 0) - 60);
+      u = { ...u, factionStandings: rivStandings };
+    }
+    setPlayer(u);
+    setShowFactionOffer(null);
+    saveGame(u, worldSeed, messages, narrative, log);
+    queueLevelUpMsg(`\u2694\uFE0F Joined ${FACTIONS[factionId].name}! ${offer.gift} added to pack.`, 7e3);
+    setLog((prev) => [...prev, { type: "system", text: `\u{1F91D} Joined: ${FACTIONS[factionId].name}` }]);
+  }
+  function handleDeclineFaction(factionId) {
+    if (!player) return;
+    const declines = [...player.factionDeclines || []];
+    if (!declines.includes(factionId)) declines.push(factionId);
+    let u = { ...player, pendingFactionOffer: null, factionDeclines: declines };
+    const forgottenEligible = declines.length >= 2 && !(u.joinedFactions || []).includes("the_forgotten") && u.pendingFactionOffer !== "the_forgotten" && getFactionRank((u.factionStandings || {})["the_forgotten"] || 0) < 1;
+    if (forgottenEligible) {
+      const standings = { ...u.factionStandings || {} };
+      standings["the_forgotten"] = Math.max(standings["the_forgotten"] || 0, 80);
+      u = { ...u, factionStandings: standings, pendingFactionOffer: "the_forgotten" };
+      setTimeout(() => setShowFactionOffer("the_forgotten"), 1200);
+    }
+    setPlayer(u);
+    setShowFactionOffer(null);
+    saveGame(u, worldSeed, messages, narrative, log);
+    queueLevelUpMsg(`${FACTIONS[factionId]?.name || ""} noted your refusal. The door remains open.`, 4e3);
+  }
+  function handleRivalFaction(factionId) {
+    if (!player) return;
+    const offer = FACTION_JOIN_OFFERS[factionId];
+    const rivId = offer?.rival;
+    let standings = { ...player.factionStandings || {} };
+    standings[factionId] = Math.max(0, (standings[factionId] || 0) - 80);
+    if (rivId) standings[rivId] = (standings[rivId] || 0) + 50;
+    let u = { ...player, factionStandings: standings, pendingFactionOffer: null };
+    setPlayer(u);
+    setShowFactionOffer(null);
+    saveGame(u, worldSeed, messages, narrative, log);
+    if (rivId) queueLevelUpMsg(`${FACTIONS[rivId]?.name || ""} heard about your snub. They approve.`, 4e3);
+  }
+  function handleBuyItem(item, price) {
+    if (!player || player.gold < price) return;
+    const u = {
+      ...player,
+      gold: player.gold - price,
+      inventory: [...player.inventory || [], item.name]
+    };
+    setPlayer(u);
+    saveGame(u, worldSeed, messages, narrative, log);
+    const u2 = grantFactionXP(u, "merchants_compact", 5);
+    setPlayer(u2);
+    saveGame(u2, worldSeed, messages, narrative, log);
+  }
+  function handleSellItem(itemName, sellPrice) {
+    if (!player) return;
+    const inv = [...player.inventory || []];
+    const idx = inv.indexOf(itemName);
+    if (idx === -1) return;
+    inv.splice(idx, 1);
+    const u = { ...player, gold: player.gold + sellPrice, inventory: inv };
+    setPlayer(u);
+    saveGame(u, worldSeed, messages, narrative, log);
+  }
+
   async function handleCommand(cmdId) {
     if (isLoading) return;
     // ── Token check ──────────────────────────────────────────────────────
