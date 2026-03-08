@@ -1666,7 +1666,7 @@ async function backendFetch(payload, onTokenUpdate) {
 }
 
 async function callClaude(messages, system, playerIdArg, onTokenUpdate) {
-  const playerId = playerIdArg || window.__aethermoorPlayerId || 'unknown';
+  const playerId = playerIdArg || window.__aethermoorPlayerId || localStorage.getItem('aethermoor_player_id') || 'unknown';
   // ── Screen player input before sending to narrator ───────────────────────
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
   if (lastUserMsg && lastUserMsg.content) {
@@ -4620,8 +4620,8 @@ function AethermoorRPG() {
       id = 'player_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
       localStorage.setItem('aethermoor_player_id', id);
     }
+    window.__aethermoorPlayerId = id;
     return id;
-  window.__aethermoorPlayerId = playerId;
   }, []);
 
   // ── Token system ──────────────────────────────────────────────────────
