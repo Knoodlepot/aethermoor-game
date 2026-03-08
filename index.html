@@ -1652,7 +1652,9 @@ async function backendFetch(payload, onTokenUpdate) {
 
   // Other server error
   if (!res.ok) {
-    return `The world flickers, as if reality itself stumbled.\n\nSomething went wrong reaching the story (${res.status}). Please try again in a moment.\n\n{"context":"explore"}`;
+    let errDetail = res.status;
+    try { const ed = await res.clone().json(); if (ed.message) errDetail = res.status + ': ' + ed.message; } catch(_) {}
+    return `The world flickers, as if reality itself stumbled.\n\nSomething went wrong reaching the story (${errDetail}). Please try again in a moment.\n\n{"context":"explore"}`;
   }
 
   const d = await res.json();
@@ -4607,42 +4609,8 @@ function AethermoorRPG() {
   const [screen, setScreen] = useState("loading");
   const [themeKey, setThemeKey] = useState("standard");
 
-  // ── Init: load saved game then transition past loading screen ─────────
-  React.useEffect(() => {
-    async function init() {
-      try {
-        const theme = await storageGet("rpg-theme").catch(() => null);
-        if (theme?.value) setThemeKey(theme.value);
-        const pRaw  = await storageGet("rpg-player").catch(() => null);
-        const sRaw  = await storageGet("rpg-seed").catch(() => null);
-        const mRaw  = await storageGet("rpg-messages").catch(() => null);
-        const nRaw  = await storageGet("rpg-narrative").catch(() => null);
-        const lRaw  = await storageGet("rpg-log").catch(() => null);
-        const gbRaw = await storageGet("rpg-gravestones").catch(() => null);
-        if (gbRaw?.value) {
-          try { setLegacyGravestones(JSON.parse(gbRaw.value)); } catch(e) {}
-        }
-        if (pRaw?.value && sRaw?.value) {
-          const p    = JSON.parse(pRaw.value);
-          const seed = JSON.parse(sRaw.value);
-          const msgs = mRaw?.value ? JSON.parse(mRaw.value) : [];
-          const narr = nRaw?.value || "";
-          const lg   = lRaw?.value ? JSON.parse(lRaw.value) : [];
-          setPlayer(p);
-          setWorldSeed(seed);
-          setMessages(msgs);
-          setNarrative(narr);
-          setLog(lg);
-          setScreen("game");
-        } else {
-          setScreen("title");
-        }
-      } catch(e) {
-        setScreen("title");
-      }
-    }
-    init();
-  }, []);
+
+
 
   // ── Player ID — unique per browser, persists across sessions ─────────
   const playerId = React.useMemo(() => {
@@ -4717,6 +4685,50 @@ function AethermoorRPG() {
   const [playerStatusEffects, setPlayerStatusEffects] = useState([]);
   const [showFactionOffer, setShowFactionOffer] = useState(null);
   const [mobileTab, setMobileTab] = useState("story");
+  const [diceState, setDiceState] = useState(null);
+  const [weather, setWeather] = useState("sunny");
+
+  // ── Init: load saved game then transition past loading screen ─────────
+  React.useEffect(() => {
+    async function init() {
+      try {
+        const theme = await storageGet("rpg-theme").catch(() => null);
+        if (theme?.value) setThemeKey(theme.value);
+        const pRaw  = await storageGet("rpg-player").catch(() => null);
+        const sRaw  = await storageGet("rpg-seed").catch(() => null);
+        const mRaw  = await storageGet("rpg-messages").catch(() => null);
+        const nRaw  = await storageGet("rpg-narrative").catch(() => null);
+        const lRaw  = await storageGet("rpg-log").catch(() => null);
+        const gbRaw = await storageGet("rpg-gravestones").catch(() => null);
+        if (gbRaw?.value) {
+          try { setLegacyGravestones(JSON.parse(gbRaw.value)); } catch(e) {}
+        }
+        if (pRaw?.value && sRaw?.value) {
+          const p    = JSON.parse(pRaw.value);
+          const seed = JSON.parse(sRaw.value);
+          const msgs = mRaw?.value ? JSON.parse(mRaw.value) : [];
+          const narr = nRaw?.value || "";
+          const lg   = lRaw?.value ? JSON.parse(lRaw.value) : [];
+          setPlayer(p);
+          setWorldSeed(seed);
+          setMessages(msgs);
+          setNarrative(narr);
+          setLog(lg);
+          setScreen("game");
+        } else {
+          setScreen("title");
+        }
+      } catch(e) {
+        setScreen("title");
+      }
+    }
+    init();
+  }, []);
+
+  // Sync weather from player travel state
+  React.useEffect(() => {
+    if (player?.travel?.weather) setWeather(player.travel.weather);
+  }, [player?.travel?.weather]);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const levelUpQueue = useRef([]);
   const levelUpTimer = useRef(null);
@@ -5121,6 +5133,11 @@ function AethermoorRPG() {
     spendToken();
     setIsLoading(true);
     let msg = CMD_MESSAGES[cmdId] || cmdId;
+    // // Append dice result to combat messages so narrator can react to roll quality
+    if (diceRoll) {
+      const quality = diceRoll.total >= 18 ? "critical success" : diceRoll.total >= 14 ? "strong success" : diceRoll.total >= 8 ? "success" : diceRoll.total >= 5 ? "weak success, partial failure" : "failure";
+      msg = msg + ` [DICE: ${diceRoll.total} (${diceRoll.roll}+${diceRoll.bonus} ${diceRoll.stat}): ${quality}]`;
+    }
     const newLog = [...log, { type: "choice", text: `> ${COMMAND_GROUPS.flatMap((g) => g.commands).find((c) => c.id === cmdId)?.icon || ""} ${msg}` }];
     setLog(newLog);
     // Keep last 20 message pairs max to control API cost and context size
