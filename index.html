@@ -5134,9 +5134,9 @@ function AethermoorRPG() {
     setIsLoading(true);
     let msg = CMD_MESSAGES[cmdId] || cmdId;
     // // Append dice result to combat messages so narrator can react to roll quality
-    if (diceRoll) {
-      const quality = diceRoll.total >= 18 ? "critical success" : diceRoll.total >= 14 ? "strong success" : diceRoll.total >= 8 ? "success" : diceRoll.total >= 5 ? "weak success, partial failure" : "failure";
-      msg = msg + ` [DICE: ${diceRoll.total} (${diceRoll.roll}+${diceRoll.bonus} ${diceRoll.stat}): ${quality}]`;
+    if (diceState) {
+      const quality = diceState.total >= 18 ? "critical success" : diceState.total >= 14 ? "strong success" : diceState.total >= 8 ? "success" : diceState.total >= 5 ? "weak success, partial failure" : "failure";
+      msg = msg + ` [DICE: ${diceState.total} (${diceState.roll}+${diceState.bonus} ${diceState.stat}): ${quality}]`;
     }
     const newLog = [...log, { type: "choice", text: `> ${COMMAND_GROUPS.flatMap((g) => g.commands).find((c) => c.id === cmdId)?.icon || ""} ${msg}` }];
     setLog(newLog);
