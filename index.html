@@ -1126,7 +1126,86 @@ function generateShopStock(location, player) {
   return stock;
 }
 const XP_TABLE = [0, 100, 250, 450, 700, 1e3, 1350, 1750, 2200, 2700, 3250, 3850, 4500, 5200, 5950, 6750, 7600, 8500, 9450, 10500];
-const LOCATIONS = ["Millhaven Village", "Thornwick Village", "Ashford Town", "Irongate Town", "Duskwall City", "Solara City", "Aethermoor Capital"];
+function generateProceduralWorld() {
+  const world = [];
+
+  // ── Name pools ──────────────────────────────────────────────────────────
+  // Large pool so we never repeat names across 60+ settlements
+  const prefixes = [
+    "Oakhaven","Stoneford","Ravenwatch","Fairmeadow","Gloomspire","Highgarden",
+    "Ironhold","Suntree","Muddybanks","Cloudpeak","Duskwood","Goldcrest",
+    "Ashwick","Bramblegate","Crestfall","Dunmore","Embervale","Frostholm",
+    "Greywater","Hollowmere","Ivywood","Kettlebridge","Larchfield","Millcross",
+    "Netherby","Oldwick","Pinehurst","Quarrystone","Redmarsh","Silverbrook",
+    "Thornmere","Undercliff","Verdant","Westgate","Yarrow","Blackfen",
+    "Coppergate","Deepholm","Eastmere","Foxley","Grimshaw","Harrowfield",
+    "Kestrel","Linden","Moorside","Northgate","Owlwatch","Pebbleford",
+    "Reedmere","Saltmarsh","Tallow","Upton","Wychwood","Zephyrhill"
+  ];
+  const pick = () => prefixes.splice(Math.floor(Math.random()*prefixes.length),1)[0] || "Ancient";
+
+  // Ruler name parts for variety
+  const rulerFirst = ["Edmund","Mira","Aldric","Serafina","Tobias","Wren","Gareth","Isolde","Cormac","Elara","Branoc","Thessaly","Oswin","Veda","Radulf"];
+  const rulerTitle = ["of the","the","Lord of","Lady of"];
+  const traits = ["Wise","Stern","Kind","Greedy","Cautious","Ambitious","Pious","Ruthless","Fair","Eccentric"];
+  const mkRuler = (place) => ({
+    name: rulerFirst[Math.floor(Math.random()*rulerFirst.length)] + " " +
+          rulerTitle[Math.floor(Math.random()*rulerTitle.length)] + " " +
+          place.split(" ")[0],
+    trait: traits[Math.floor(Math.random()*traits.length)]
+  });
+
+  const add = (type, forcedName) => {
+    const config = SETTLEMENT_TYPES[type];
+    const n = forcedName || pick() + " " + config.label.split(" ").pop();
+    world.push({
+      name: n, type, icon: config.icon,
+      populace: Math.floor(Math.random()*(config.popRange[1]-config.popRange[0]))+config.popRange[0],
+      industry: config.industries,
+      ruler: mkRuler(n)
+    });
+  };
+
+  // ── Settlement counts ────────────────────────────────────────────────────
+  // Based on medieval England ratios: the larger the settlement,
+  // the more farms cluster around it to feed it.
+  add("capital", "Aethermoor Capital");   // 1 capital
+  for(let i=0; i<6; i++)  add("city");   // 6 cities
+  for(let i=0; i<10; i++) add("town");   // 10 towns
+  for(let i=0; i<16; i++) add("village");// 16 villages
+  for(let i=0; i<15; i++) add("hamlet"); // 15 hamlets
+
+  // ── Farms: historically tied to settlement size ───────────────────────────
+  // Capital feeds thousands — needs 5-7 surrounding farms
+  // Cities need 3-5 farms each, towns 2-3, villages 1-2, hamlets 0-1
+  // Randomised within each range for variety
+  const farmTypes = ["farm_arable","farm_livestock","farm_mixed"];
+  const farmRanges = { capital:[5,7], city:[3,5], town:[2,3], village:[1,2], hamlet:[0,1] };
+
+  world.slice().forEach(settlement => {
+    const [min, max] = farmRanges[settlement.type] || [0,0];
+    const count = min + Math.floor(Math.random()*(max-min+1));
+    for(let i=0; i<count; i++) {
+      const ft = farmTypes[Math.floor(Math.random()*farmTypes.length)];
+      const config = SETTLEMENT_TYPES[ft];
+      const farmName = pick() + " " + config.label.split(" ").pop();
+      world.push({
+        name: farmName, type: ft, icon: config.icon,
+        parentSettlement: settlement.name,  // links back to parent
+        populace: Math.floor(Math.random()*(config.popRange[1]-config.popRange[0]))+config.popRange[0],
+        industry: config.industries,
+        ruler: mkRuler(farmName)
+      });
+    }
+  });
+
+  return world;
+}
+
+const WORLD_DATA = generateProceduralWorld();
+const LOCATIONS = WORLD_DATA.map(l => l.name);
+
+
 const ROADS = [
   { id: "road_mill_ash", from: "Millhaven Village", to: "Ashford Town", steps: 4, danger: 1, name: "The Miller's Path", terrain: "rolling farmland and hedgerows", factionInfluence: "merchants_compact", weatherPattern: "rainy" },
   { id: "road_thorn_iron", from: "Thornwick Village", to: "Irongate Town", steps: 4, danger: 3, name: "The Thornwood Trail", terrain: "dense forest and mossy stone", factionInfluence: "thornwood_druids", weatherPattern: "misty" },
