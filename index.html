@@ -1670,10 +1670,11 @@ async function callClaude(messages, system, playerId, onTokenUpdate) {
     try {
       const screenRes = await fetch(`${BACKEND_URL}/api/claude`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Game-Token": _gt },
         body: JSON.stringify({
           type:       "screen",
           playerId,
+          _gt,
           model:      "claude-haiku-4-5-20251001",
           max_tokens: 5,
           system:     SCREEN_SYSTEM,
@@ -3496,6 +3497,1112 @@ function StandingsScreen({ player, T, tf, bf, isDyslexic, onClose }) {
     return pk ? /* @__PURE__ */ React.createElement("span", { key: pId, style: { fontSize: 11, color: T.textMuted, background: T.panelAlt, padding: "2px 8px", border: `1px solid ${T.border}` } }, pk.icon, " ", pk.name) : null;
   })), (player.deepestFloor || 0) > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4, fontSize: 12, color: "#a060c0" } }, "\u{1F573}\uFE0F Dungeon deepest: Floor ", player.deepestFloor), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, display: "flex", gap: 2 } }, REP_TIERS.map((rt, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { flex: 1, height: 5, borderRadius: 2, background: (player.reputation || 0) >= rt.min ? rt.color : T.border } })))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.text, lineHeight: 1.8, fontFamily: "Crimson Text,serif", marginBottom: 12 } }, "Your global reputation reflects your legend across all of Aethermoor. It rises through heroic deeds, quest completions, helping communities, and earning the respect of factions. It falls through betrayal, cruelty, and failure."), /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 11, letterSpacing: 2, marginBottom: 8 } }, "REPUTATION TIERS"), REP_TIERS.map((rt, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: (player.reputation || 0) >= rt.min ? T.selectedBg : "transparent", border: `1px solid ${(player.reputation || 0) >= rt.min ? rt.color : T.border}`, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: "50%", background: rt.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { ...tf, color: rt.color, fontSize: 11, minWidth: 90 } }, rt.label), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontFamily: "Crimson Text,serif" } }, rt.min <= -999 ? "Below -50" : `${rt.min}+ points`), (player.reputation || 0) >= rt.min && i === REP_TIERS.filter((r) => (player.reputation || 0) >= r.min).length - 1 && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: rt.color, marginLeft: "auto", letterSpacing: 1, ...tf } }, "\u25C0 YOU")))), tab === "class" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, fontFamily: "Crimson Text,serif", lineHeight: 1.7, marginBottom: 14, padding: "10px 12px", background: T.panelAlt, border: `1px solid ${T.border}` } }, "Class factions are tied to your chosen class. Working with your class faction grants abilities and perks, but causes mild friction with the other three. No faction ever becomes hostile \u2014 just less helpful."), Object.values(FACTIONS).filter((f) => f.group === "class").map((f) => /* @__PURE__ */ React.createElement(FactionCard, { key: f.id, fid: f.id }))), tab === "world" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, fontFamily: "Crimson Text,serif", lineHeight: 1.7, marginBottom: 14, padding: "10px 12px", background: T.panelAlt, border: `1px solid ${T.border}` } }, "World factions are open to any class. Earning rank with one causes mild rivalry penalties with the others in its group, but none will ever become hostile without good reason."), Object.values(FACTIONS).filter((f) => f.group === "world").map((f) => /* @__PURE__ */ React.createElement(FactionCard, { key: f.id, fid: f.id }))), tab === "locations" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, fontFamily: "Crimson Text,serif", lineHeight: 1.7, marginBottom: 14, padding: "10px 12px", background: T.panelAlt, border: `1px solid ${T.border}` } }, "Each settlement tracks your reputation independently. Higher standing unlocks local rewards \u2014 discounts, contacts, safe houses and more. No settlement rep affects any other."), Object.keys(LOCATION_TIERS).map((loc) => /* @__PURE__ */ React.createElement(LocationCard, { key: loc, locName: loc }))))));
 }
+function PixelScene({ context, weather, isLoading, T, diceState }) {
+  const canvasRef = React.useRef(null);
+  const animRef   = React.useRef(null);
+  const frameRef  = React.useRef(0);
+
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const g = canvas.getContext('2d');
+    const P = 2, W = 160, H = 56;
+
+    const px  = (x,y,c)     => { if(x<0||x>=W||y<0||y>=H||!c)return; g.fillStyle=c; g.fillRect(x*P,y*P,P,P); };
+    const bx  = (x,y,w,h,c) => { if(!c||w<=0||h<=0)return; g.fillStyle=c; g.fillRect(x*P,y*P,w*P,h*P); };
+    const row = (x0,y,arr)  => arr.forEach((c,i)=>{ if(c&&c!=='.')px(x0+i,y,c); });
+    const dit = (x,y,w,h,a,b)=>{ for(let ry=0;ry<h;ry++) for(let rx=0;rx<w;rx++) px(x+rx,y+ry,(rx+ry)%2===0?a:b); };
+    const O = null;
+
+    /* ══ PALETTE ══════════════════════════════════════════════ */
+    // Backbone-inspired: deep blacks, moody atmosphere, rich outlines
+    const BK='#0a0810', BK2='#14121c';
+    // Sky - sunny
+    const SS1='#2c6898',SS2='#3a80b8',SS3='#5098cc',SS4='#70b4dc',SS5='#90ccec',SS6='#b8e0f4';
+    // Sky - cloudy
+    const SC1='#3a3848',SC2='#4a4858',SC3='#585868',SC4='#686878',SC5='#807888';
+    // Sky - night/stormy
+    const SN1='#080612',SN2='#0e0c1e',SN3='#141228',SN4='#1c1a32',SN5='#22203c';
+    // Sky - dusk
+    const SD1='#1a0c28',SD2='#2c1438',SD3='#3e2048',SD4='#5c3060',SD5='#7a4070';
+    // Sun
+    const SUA='#f8e830',SUB='#f8b820',SUC='#f88010';
+    // Moon
+    const MNA='#e8ecf8',MNB='#ccd4e8',MNC='#9aa8c0',MNK='#14121e';
+    // Clouds (sunny)
+    const CLA='#e8f4fc',CLB='#f4f8ff',CLC='#ffffff';
+    // Clouds (grey/stormy)
+    const CGA='#404050',CGB='#505060',CGC='#606070',CGD='#707080';
+    // Stars
+    const STA='#d0daf0',STB='#a0b0d8',STC='#606878';
+    // Ground
+    const GA='#1a2c08',GB='#243a0c',GC='#2e4a10',GD='#3a5c18',GE='#486c20',GF='#587c2c';
+    const GH='#6a8c38',GL='#7c9c48'; // highlight
+    const GS='#121e06'; // shadow
+    // Dirt/path
+    const DA='#3c2410',DB='#4e3018',DC='#624020',DD='#7a5030',DE='#8e6440',DF='#a47858';
+    // Snow ground
+    const SWA='#c8d8ec',SWB='#d8e8f4',SWC='#e8f4fc',SWD='#f4f8ff';
+    // Stone
+    const STA2='#1e1c28',STB2='#2c2a38',STC2='#3a3848',STD2='#484858',STE='#585868',STF='#686878',STG='#888898';
+    // Wood
+    const WA='#2c1408',WB='#3c2010',WC='#4e2e18',WD2='#623c20',WE='#7a4c2c',WF='#926038',WH='#aa7848';
+    // Foliage - Backbone rich dark greens
+    const LA='#0c1a04',LB='#142808',LC='#1c380c',LD='#263e10',LE='#304e18',LF='#3c6020',LG='#4a7228',LH='#588430',LI='#669440',LJ='#76a450',LK='#88b460',LS='#0a1404';
+    // Building stone (warm)
+    const BWA='#1c1820',BWB='#28242e',BWC='#342e3c',BWD='#403848',BWE='#4e4658',BWF='#5c5468';
+    // Building wall warm stone
+    const WLA='#3c3028',WLB='#504030',WLC='#645040',WLD='#786050',WLE='#8c7060',WLF='#a08070';
+    // Roof
+    const RFA='#2c1818',RFB='#3e2424',RFC='#522e2e',RFD='#663838',RFE='#7a4444',RFF='#8e5050';
+    // Window glow (warm)
+    const WNA2='#f8e070',WNB2='#f8c040',WNC2='#f09020',WND='#7a6010',WND2='#3a3010';
+    const WNE='#a0d8f0',WNF='#c0ecff'; // cool window
+    // Neon/lamp glow colours
+    const NGA='#ff6090',NGB='#ff90b8'; // pink neon
+    const NHA='#40d0ff',NHB='#80e8ff'; // blue neon
+    const NIA='#ffe060',NIB='#fff4a0'; // yellow lamp
+    // Fire
+    const FRA='#600000',FRB='#a01400',FRC='#d03400',FRD='#f05000',FRE='#f88000',FRF='#fcbc00',FRG='#fef060';
+    // Rain
+    const RNC='#6090c0',RND='#80aad8';
+    // Snow
+    const SNW='#e8f0fc',SNW2='#f4f8ff';
+    // Fog
+    const FOG='#a0b0c0';
+    // Hero sprite
+    const HSK='#d4a870',HSK2='#b88c5c',HSK3='#8c6040';
+    const HHR='#2a1808',HHR2='#3c2410';
+    const HAA='#2858a0',HAB='#3870c0',HAC='#4e8cd8',HAD='#6aa8e8';
+    const HAK='#1a3460';
+    const HPT='#3a2c18',HPT2='#5a4428',HPT3='#7a5c38';
+    const HBT='#18100c',HBT2='#281c14';
+    const HCK='#48305c',HCK2='#6a4880',HCK3='#8c68a0';
+    const HSW='#c8d8e8',HSW2='#e0eef8';
+    const HGD='#d8a830',HGD2='#f0c040';
+    const HSC='#5c3c20',HSC2='#7c5430';
+    // Enemy orc
+    const OA='#2c4c10',OB='#3c6018',OC='#4c7820',OD='#609030';
+    const OAR='#3c2810',OAR2='#583c1c',OAR3='#7a5428';
+    const OEY='#e83010',OTK='#e0c060';
+    // Wraith
+    const WRA='#18082c',WRB='#281040',WRC='#381858',WRD='#481e70';
+    const WRE='#600ea0',WRF='#8820d0',WRG='#a840f0';
+
+    /* ══ HELPERS ══════════════════════════════════════════════ */
+
+    // Draw sky gradient (Backbone-style: dark at top, lighter at horizon)
+    const drawSky = (cols) => {
+      const bandH = Math.ceil(32 / cols.length);
+      cols.forEach((c, i) => bx(0, i*bandH, W, bandH+1, c));
+    };
+
+    // Draw a parallax mountain silhouette
+    const drawMountains = (yBase, col, profile) => {
+      for(let x=0;x<W;x++){
+        const h = profile[x % profile.length] || 0;
+        for(let y=yBase-h; y<=yBase; y++) px(x, y, col);
+      }
+    };
+
+    // Draw ground with Backbone-style layered bands
+    const drawGround = (yStart, cols) => {
+      cols.forEach((c,i) => bx(0, yStart+i, W, 1, c));
+      for(let y=yStart+cols.length; y<H; y++) bx(0, y, W, 1, cols[cols.length-1]);
+    };
+
+    // Backbone-style building facade (side-scrolling face view)
+    const drawBuilding = (ox, oy, w, h, wall, roof, trim) => {
+      // Main wall
+      bx(ox, oy+2, w, h, wall);
+      // Brick texture rows
+      for(let y=oy+2; y<oy+h+2; y+=4) { bx(ox, y, w, 1, BK); }
+      for(let y=oy+2; y<oy+h+2; y+=4) {
+        const off = (Math.floor(y/4))%2===0 ? 0 : 4;
+        for(let x=ox+off; x<ox+w; x+=8) px(x, y, BK);
+      }
+      // Roof (flat top with parapet)
+      bx(ox, oy, w, 3, roof);
+      bx(ox-1, oy, w+2, 1, BK);
+      // Merlons on parapet
+      for(let x=ox; x<ox+w; x+=4) { px(x, oy-1, roof); px(x+1, oy-1, roof); }
+      // Trim line
+      bx(ox, oy+2, w, 1, trim);
+      // Outline
+      for(let y=oy; y<oy+h+2; y++) { px(ox-1,y,BK); px(ox+w,y,BK); }
+      for(let x=ox; x<ox+w; x++) px(x,oy+h+2,BK);
+    };
+
+    // Glowing window (Backbone signature warm glow)
+    const drawWindow = (ox, oy, glow) => {
+      bx(ox, oy, 4, 5, BK);
+      bx(ox+1, oy+1, 2, 3, glow);
+      px(ox+1, oy+1, glow==='#f8e070'?'#fff8c0':glow);
+      // Glow bleed
+      g.globalAlpha = 0.25;
+      bx(ox-1, oy-1, 6, 7, glow);
+      g.globalAlpha = 1;
+    };
+
+    // Backbone-style tree (dark trunk, layered canopy, outlined)
+    const drawTree = (ox, oy, tall=false) => {
+      const h = tall ? 22 : 16;
+      // Trunk
+      bx(ox+4, oy+h-4, 3, 5, WB);
+      px(ox+4, oy+h-4, WC); px(ox+6, oy+h-4, WA);
+      px(ox+5, oy+h-3, WD2);
+      // Silhouette canopy — Backbone uses dark filled shapes with subtle edge detail
+      bx(ox, oy+h-14, 11, 11, LA);
+      bx(ox+1, oy+h-17, 9, 7, LB);
+      bx(ox+2, oy+h-20, 7, 7, LC);
+      bx(ox+3, oy+h-22, 5, 6, LD);
+      bx(ox+4, oy+h-24, 3, 5, LE);
+      // Edge highlights (Backbone light catch on canopy rim)
+      px(ox+9, oy+h-14, LH); px(ox+10, oy+h-13, LI); px(ox+10, oy+h-12, LH);
+      px(ox+9, oy+h-16, LG); px(ox+10, oy+h-15, LH);
+      px(ox+8, oy+h-18, LF); px(ox+9, oy+h-17, LG);
+      px(ox+7, oy+h-20, LF); px(ox+8, oy+h-19, LG);
+      // Shadow side (left)
+      for(let y=oy+h-22; y<oy+h-10; y++) px(ox, y, LS);
+      for(let y=oy+h-18; y<oy+h-10; y++) px(ox+1, y, LA);
+      // Outline dots
+      px(ox-1, oy+h-13, BK); px(ox+11, oy+h-13, BK);
+      px(ox+1, oy+h-22, BK); px(ox+9, oy+h-22, BK);
+    };
+
+    // Simple hero sprite (side-scrolling, Backbone scale)
+    const drawHero = (ox, oy, fr) => {
+      const wf = Math.floor(fr/14)%4;
+      // Head
+      row(ox+2, oy,   [BK,BK,BK,BK,BK,BK]);
+      row(ox+1, oy+1, [BK,HHR2,HHR,HHR,HHR,HHR2,BK]);
+      row(ox+1, oy+2, [BK,HSK3,HSK,HSK,HSK,HSK3,BK]);
+      row(ox+1, oy+3, [BK,HSK2,HSK,HSK2,HSK,HSK2,BK]);
+      row(ox+2, oy+4, [BK,BK,BK,BK,BK]);
+      // Cape
+      px(ox,oy+5,HCK); px(ox,oy+6,HCK2); px(ox,oy+7,HCK); px(ox,oy+8,HCK);
+      px(ox+8,oy+5,HCK); px(ox+8,oy+6,HCK2); px(ox+8,oy+7,HCK);
+      // Shoulders/chest
+      row(ox+1, oy+5, [BK,HAC,HAD,HAD,HAC,HAB,BK]);
+      row(ox+1, oy+6, [BK,HAB,HAC,HAD,HAC,HAA,BK]);
+      row(ox+1, oy+7, [BK,HAA,HAB,HAC,HAB,HAK,BK]);
+      row(ox+1, oy+8, [BK,HAK,HAA,HAB,HAA,HAK,BK]);
+      // Belt
+      row(ox+2, oy+9, [HSC2,HGD,HSC2,HGD,HSC2]);
+      // Sword
+      px(ox+8,oy+6,HSW2); px(ox+8,oy+7,HSW); px(ox+8,oy+8,HGD2);
+      // Legs
+      if(wf===0||wf===2){
+        row(ox+2,oy+10,[HPT3,HPT2,HPT,HPT2,HPT3]);
+        row(ox+2,oy+11,[HPT2,HPT,HPT2,HPT,HPT2]);
+        row(ox+2,oy+12,[HBT2,HBT,BK,HBT,HBT2]);
+        row(ox+2,oy+13,[HBT,HBT2,BK,HBT2,HBT]);
+      } else if(wf===1){
+        row(ox+1,oy+10,[HPT3,HPT2,HPT,BK,HPT2,HPT3]);
+        row(ox+1,oy+11,[HPT2,HPT,HPT2,BK,HPT,HPT2]);
+        row(ox+1,oy+12,[HBT,HBT2,BK,BK,BK,HBT2]);
+        row(ox+1,oy+13,[HBT2,HBT,BK,BK,BK,HBT]);
+      } else {
+        row(ox+1,oy+10,[HPT3,BK,HPT,HPT2,HPT,HPT3]);
+        row(ox+1,oy+11,[HPT2,BK,HPT2,HPT,HPT2,HPT2]);
+        row(ox+1,oy+12,[HBT2,BK,BK,BK,HBT,HBT2]);
+        row(ox+1,oy+13,[HBT,BK,BK,BK,HBT2,HBT]);
+      }
+    };
+
+    /* ══ WEATHER OVERLAY ══════════════════════════════════════ */
+    const drawWeather = (wx, fr) => {
+      const t = Math.floor(fr/3);
+      if(wx==='rainy'||wx==='stormy') {
+        // Backbone-style diagonal rain streaks
+        const intensity = wx==='stormy' ? 40 : 22;
+        for(let i=0;i<intensity;i++){
+          const rx = ((i*37 + t*3) % (W+8)) - 4;
+          const ry = (i*13 + t*2) % H;
+          // Short diagonal streaks (3px long, 1px right)
+          for(let s=0;s<3;s++){
+            const c = s===0?RND:RNC;
+            g.globalAlpha = s===0?0.9:0.5;
+            px(rx+s, ry+s*2, c);
+          }
+        }
+        g.globalAlpha = 1;
+        // Puddle ripples on ground (y>38)
+        for(let i=0;i<6;i++){
+          const px2 = (i*29+Math.floor(t/8)*19)%W;
+          const age = (t + i*7)%16;
+          if(age<8){
+            g.globalAlpha=0.4-age*0.04;
+            g.strokeStyle=RND; g.lineWidth=1;
+            g.beginPath();
+            g.ellipse((px2+1)*P, 42*P, (age+1)*P, Math.floor((age+1)/2)*P, 0, 0, Math.PI*2);
+            g.stroke();
+          }
+        }
+        g.globalAlpha=1;
+        // Stormy: occasional lightning flash
+        if(wx==='stormy'){
+          const lf=Math.floor(fr/3)%90;
+          if(lf<2){
+            g.globalAlpha=0.3; bx(0,0,W,32,'#d8eeff'); g.globalAlpha=1;
+          }
+        }
+      } else if(wx==='snowy') {
+        // Gentle falling snowflakes
+        for(let i=0;i<30;i++){
+          const sx = ((i*41 + Math.floor(t/2)*(i%2===0?1:-1)) % W + W) % W;
+          const sy = (i*17 + Math.floor(t/1.5)) % H;
+          g.globalAlpha = 0.7+Math.sin(t*0.1+i)*0.3;
+          px(sx, sy, SNW2);
+          if(i%3===0) px(sx+1, sy, SNW); // double pixel flake
+        }
+        g.globalAlpha=1;
+        // Snow accumulation on ground
+        for(let x=0;x<W;x++){
+          const depth = 1+Math.floor(Math.sin(x*0.4)*0.5+0.5);
+          bx(x,38,1,depth,SWD);
+        }
+        // Snow on roof/surface tops - drawn per scene, but thin white strip at ground line
+        dit(0,38,W,1,SWC,SWD);
+      } else if(wx==='foggy') {
+        // Layered fog bands (Backbone-style mist)
+        g.globalAlpha=0.18; bx(0,16,W,8,FOG);
+        g.globalAlpha=0.12; bx(0,20,W,6,FOG);
+        g.globalAlpha=0.22; bx(0,28,W,4,FOG);
+        g.globalAlpha=0.30; bx(0,35,W,6,FOG);
+        g.globalAlpha=1;
+      } else if(wx==='cloudy') {
+        // Extra heavy cloud layer over sky
+        g.globalAlpha=0.55; bx(0,0,W,20,CGC); g.globalAlpha=1;
+        // Dark cloud masses
+        for(let ci=0;ci<4;ci++){
+          const cx = (ci*48+Math.floor(fr/120)*(ci%2===0?1:-1))%W;
+          const cy = 2+ci*3;
+          g.globalAlpha=0.7; bx(cx,cy,32,8,CGA); bx(cx+4,cy-2,20,4,CGB); g.globalAlpha=1;
+        }
+      }
+    };
+
+    /* ══ DICE OVERLAY ═════════════════════════════════════════ */
+    const GLYPHS = {'0':[[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],'1':[[0,1,0,0],[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,1,1,0]],'2':[[0,1,1,0],[1,0,0,1],[0,0,1,0],[0,1,0,0],[1,1,1,1]],'3':[[1,1,1,0],[0,0,0,1],[0,1,1,0],[0,0,0,1],[1,1,1,0]],'4':[[1,0,1,0],[1,0,1,0],[1,1,1,1],[0,0,1,0],[0,0,1,0]],'5':[[1,1,1,1],[1,0,0,0],[1,1,1,0],[0,0,0,1],[1,1,1,0]],'6':[[0,1,1,0],[1,0,0,0],[1,1,1,0],[1,0,0,1],[0,1,1,0]],'7':[[1,1,1,1],[0,0,0,1],[0,0,1,0],[0,1,0,0],[0,1,0,0]],'8':[[0,1,1,0],[1,0,0,1],[0,1,1,0],[1,0,0,1],[0,1,1,0]],'9':[[0,1,1,0],[1,0,0,1],[0,1,1,1],[0,0,0,1],[0,1,1,0]],'+':[[0,1,0,0],[0,1,0,0],[1,1,1,0],[0,1,0,0],[0,1,0,0]],'-':[[0,0,0,0],[0,0,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],' ':[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]};
+    const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ!=/';
+    const ALPHA_G={'A':[[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],'B':[[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,1,1,0]],'C':[[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],'D':[[1,1,0,0],[1,0,1,0],[1,0,0,1],[1,0,1,0],[1,1,0,0]],'E':[[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]],'F':[[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,0,0,0]],'G':[[0,1,1,1],[1,0,0,0],[1,0,1,1],[1,0,0,1],[0,1,1,1]],'H':[[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],'I':[[1,1,1,0],[0,1,0,0],[0,1,0,0],[0,1,0,0],[1,1,1,0]],'K':[[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],'L':[[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],'M':[[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1]],'N':[[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],'O':[[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],'R':[[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],'S':[[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],'T':[[1,1,1,1],[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],'U':[[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],'W':[[1,0,0,1],[1,0,0,1],[1,0,1,1],[1,1,0,1],[1,0,0,1]],'X':[[1,0,0,1],[0,1,1,0],[0,0,0,0],[0,1,1,0],[1,0,0,1]],'!':[[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,0,0,0],[0,1,0,0]],'=':[[0,0,0,0],[1,1,1,0],[0,0,0,0],[1,1,1,0],[0,0,0,0]]};
+    const allGlyphs = {...GLYPHS, ...ALPHA_G};
+    const drawText = (x0,y0,str,col,sc=1) => {
+      str.toUpperCase().split('').forEach((ch,ci)=>{
+        const gd=allGlyphs[ch]; if(!gd)return;
+        gd.forEach((r,ry)=>r.forEach((b,rx)=>{ if(b){g.fillStyle=col;g.fillRect((x0+ci*(4*sc+sc)+rx*sc)*P,(y0+ry*sc)*P,sc*P,sc*P);}}));
+      });
+    };
+    const textW = (str,sc=1) => str.length*(4*sc+sc)-sc;
+
+    const drawDice = (ds, fr) => {
+      if(!ds) return;
+      const t=Math.floor(fr/2);
+      const settled=!ds.rolling;
+      const dieX=settled?Math.floor(W/2)-14:(12+(t*3)%(W-32));
+      const dieY=settled?10:(8+Math.abs(Math.sin(t*0.4)*5)|0);
+      const faceNum=ds.rolling?(1+t%20):ds.roll;
+      const col=settled?(ds.total>=18?'#30c840':ds.total>=14?'#78c030':ds.total>=8?'#d8a830':ds.total>=5?'#e06020':'#cc1818'):'#505068';
+      const colHL=settled?(ds.total>=18?'#58e860':ds.total>=14?'#a0e060':ds.total>=8?'#f0d050':ds.total>=5?'#f09050':'#ee4040'):'#7070a0';
+      const colDK=settled?(ds.total>=18?'#208028':ds.total>=14?'#487818':ds.total>=8?'#986010':ds.total>=5?'#984010':'#881010'):'#303050';
+      if(settled){g.globalAlpha=0.65; bx(0,0,W,H,'#06040e'); g.globalAlpha=1;}
+      g.globalAlpha=0.4; bx(dieX+2,dieY+2,28,28,BK); g.globalAlpha=1;
+      bx(dieX+3,dieY,22,28,col); bx(dieX,dieY+3,28,22,col); bx(dieX+1,dieY+1,26,26,col);
+      bx(dieX+4,dieY+1,10,3,colHL); px(dieX+4,dieY+1,colHL);
+      bx(dieX+3,dieY+22,22,4,colDK); bx(dieX+22,dieY+3,4,22,colDK);
+      for(let i=3;i<25;i++){px(dieX+i,dieY,BK);px(dieX+i,dieY+27,BK);}
+      for(let i=3;i<25;i++){px(dieX,dieY+i,BK);px(dieX+27,dieY+i,BK);}
+      px(dieX+2,dieY+1,BK);px(dieX+1,dieY+2,BK);px(dieX+25,dieY+1,BK);px(dieX+26,dieY+2,BK);
+      px(dieX+2,dieY+26,BK);px(dieX+1,dieY+25,BK);px(dieX+25,dieY+26,BK);px(dieX+26,dieY+25,BK);
+      const numS=String(faceNum); const nw=textW(numS,2);
+      drawText(dieX+Math.floor((28-nw/P)/2),dieY+10,numS,BK,2);
+      if(settled){
+        const lbl=ds.total===20?'NAT 20!':ds.total>=18?'CRITICAL':ds.total>=14?'STRONG HIT':ds.total>=8?'HIT':ds.total>=5?'WEAK HIT':'MISS';
+        drawText(Math.floor(W/2)-Math.floor(textW(lbl,1)/P/2),dieY+30,lbl,colHL,1);
+        const det=`${ds.roll}+${ds.bonus} ${ds.stat}`;
+        drawText(Math.floor(W/2)-Math.floor(textW(det,1)/P/2),dieY+37,det,'#9090b0',1);
+      }
+    };
+
+    /* ══ SCENE MOUNTAIN PROFILES ══════════════════════════════ */
+    const MTNS_FAR  = [3,3,4,5,6,7,8,8,7,6,5,4,3,3,4,5,6,7,8,9,9,8,7,6,5,4,3,2,2,3,4,5,6,7,8,9,10,10,9,8,7,6,5,4,3,3,4,5,6,7,7,6,5,4,3,2,2,3,4,5,6,7,8,9,10,11,11,10,9,8,7,6,5,4,3,3,4,5,6,7,8,8,7,6,5,4,3,2,3,4,5,6,7,8,9,10,9,8,7,6,5,4,3,3,4,5,6,7,8,7,6,5,4,3,2,2,3,4,5,6,7,8,9,10,11,10,9,8,7,6,5,4,3,2,3,4,5,6,7,8,8,7,6,5,4,3,3,4,5,6,7,8,9,9,8,7,6,5,4,3];
+    const MTNS_NEAR = [0,0,0,1,2,3,4,5,6,7,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,8,9,9,8,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,8,9,10,9,8,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,8,7,6,5,4,3,2,1,0,0,0,1,2,3,4,5,6,7,6,5,4,3,2,1,0,0,0];
+
+    /* ══ SCENES ═══════════════════════════════════════════════ */
+    const scenes = {
+
+      explore(fr, wx) {
+        const t = Math.floor(fr/4);
+        const isNight = wx==='stormy';
+        // ── SKY ──
+        if(isNight||wx==='stormy') {
+          drawSky([SN1,SN1,SN2,SN2,SN3,SN3,SN4,SN4,SN5]);
+        } else if(wx==='cloudy'||wx==='rainy') {
+          drawSky([SC1,SC1,SC2,SC2,SC3,SC3,SC4,SC5,SC5]);
+        } else {
+          // Sunny — classic Backbone sky: dark at zenith, bright at horizon
+          drawSky([SS1,SS1,SS2,SS2,SS3,SS3,SS4,SS5,SS5,SS6]);
+          // Sun (upper right)
+          bx(138,2,10,10,SUA); px(138,2,SUB);px(147,2,SUB);px(138,11,SUB);px(147,11,SUB);
+          px(140,1,SUA);px(143,1,SUA);px(146,1,SUA);
+          px(137,4,SUA);px(148,4,SUA);px(137,7,SUA);px(148,7,SUA);
+          g.globalAlpha=0.3; bx(135,0,18,14,SUA); g.globalAlpha=1;
+        }
+        // ── CLOUDS ──
+        if(wx!=='stormy'){
+          const cl = wx==='cloudy'||wx==='rainy' ? [CGA,CGB,CGC] : [CLA,CLB,CLC];
+          const cd = Math.floor(fr/10);
+          [[80-(cd%100),4,40,5],[30-(cd%80),7,28,4],[110-(cd%90),9,22,3]].forEach(([cx,cy,cw,ch])=>{
+            if(cx<W+cw){
+              bx(Math.max(0,cx),cy,Math.min(cw,W-Math.max(0,cx)),ch,cl[0]);
+              bx(Math.max(0,cx+2),cy-1,Math.min(cw-4,W),2,cl[1]);
+              bx(Math.max(0,cx+4),cy-2,Math.min(cw-8,W),2,cl[2]);
+            }
+          });
+        }
+        // ── FAR MOUNTAINS (silhouette) ──
+        const mCol = isNight ? '#1a1828' : wx==='cloudy'||wx==='rainy' ? '#303040' : '#1c2840';
+        drawMountains(22, mCol, MTNS_FAR);
+        // ── NEAR HILLS ──
+        const hCol = isNight ? GS : wx==='cloudy'||wx==='rainy' ? LD : LC;
+        drawMountains(28, hCol, MTNS_NEAR);
+        for(let x=0;x<W;x++) { const h=MTNS_NEAR[x%MTNS_NEAR.length]; if(h>0){px(x,28-h,isNight?LA:LD);px(x,27-h,isNight?LS:LC);} }
+        // ── TREE LINE (Backbone side-scrolling forest edge) ──
+        const treeLine = [32,31,30,30,29,28,28,29,30,31,32,31,30,29,28,27,27,28,29,30,31,32,32,31,30,29,28,27,26,27,28,29,30,31,32,32,31,30,29,28,28,29,30,31,32];
+        for(let x=0;x<W;x++){
+          const ty=treeLine[x%treeLine.length]||30;
+          for(let y=ty;y<=33;y++) px(x,y,y===ty?LH:y<=ty+2?LG:y<=ty+4?LF:LE);
+        }
+        // Individual detailed trees (side-scrolling, visible trunks)
+        drawTree(2, 14);
+        drawTree(20, 12, true);
+        drawTree(118, 13);
+        drawTree(136, 11, true);
+        // ── GROUND ──
+        const gCols = wx==='snowy' ? [SWB,SWC,SWD,SWD,SWC,SWB,SWA] :
+                      isNight ? [GA,GA,GB,GB,GC,GC,GD] :
+                      wx==='cloudy'||wx==='rainy' ? [GB,GC,GC,GD,GD,GE,GE] :
+                      [GC,GD,GD,GE,GE,GF,GF,GH];
+        drawGround(34, gCols);
+        // Grass tufts at tree-line transition
+        for(let x=0;x<W;x+=5){
+          const g2=wx==='snowy'?SWD:LI;
+          px(x,34,g2); px(x+2,33,g2); px(x+4,34,LH);
+        }
+        // ── DIRT PATH (side-scrolling, goes off into distance right) ──
+        // Path narrows into distance — we fake it with bands
+        for(let x=0;x<W;x++){
+          const pStart = Math.floor(34 + (W-x)*0.1);
+          const pW = 2 + Math.floor((W-x)*0.06);
+          const c1=wx==='snowy'?SWC:DC, c2=wx==='snowy'?SWD:DD;
+          bx(x,pStart,1,pW,x%2===0?c1:c2);
+        }
+        // ── HERO (side-scrolling walk) ──
+        drawHero(68, 33-13, fr);
+        // ── BIRDS ──
+        if(wx!=='stormy'&&wx!=='rainy'){
+          const bd=Math.floor(fr/25);
+          [[15+bd%40,8],[22+bd%30,6],[120-bd%35,7],[130-bd%25,9]].forEach(([x,y])=>{
+            if(x>0&&x<W-1){px(x,y,BK);px(x-1,y+1,BK);px(x+1,y+1,BK);}
+          });
+        }
+      },
+
+      town(fr, wx) {
+        const t = Math.floor(fr/4);
+        const isEvening = true; // towns are always evening in Aethermoor
+        // ── SKY (evening dusk — classic Backbone mood) ──
+        drawSky([SD1,SD1,SD2,SD2,SD3,SD3,SD4,SD5,SD5,'#9a5080']);
+        // Stars
+        [[8,1,STC],[20,0,STB],[35,2,STC],[55,1,STB],[75,0,STA],[95,2,STC],[115,1,STB],[145,0,STA],[158,2,STC]].forEach(([x,y,c])=>px(x,y,c));
+        // Moon
+        bx(148,3,9,8,MNB); px(148,3,MNK);px(156,3,MNK);px(148,10,MNK);px(156,10,MNK);
+        px(149,4,MNA);px(150,4,MNA);px(149,4,MNA);
+        px(153,5,MNC);px(154,6,MNC);
+        // ── CLOUDS (if applicable) ──
+        if(wx==='cloudy'||wx==='rainy'||wx==='stormy'){
+          const cd=Math.floor(fr/10);
+          [[0,1,50,6,'#281a38'],[48,0,40,5,'#301c40'],[86,2,44,6,'#281a38'],[128,1,36,5,'#301c40']].forEach(([cx,cy,cw,ch,cc])=>{
+            bx(cx,cy,cw,ch,cc);
+          });
+        }
+        // ── BACKGROUND BUILDINGS (far, dark silhouettes) ──
+        [[0,16,18,20,BWA],[16,18,14,18,BWB],[28,14,20,22,BWA],[46,20,10,16,BWB],
+         [54,15,16,21,BWA],[68,19,12,17,BWB],[78,12,18,24,BWA],[94,18,14,18,BWB],
+         [106,16,20,20,BWA],[124,14,16,22,BWB],[138,17,22,19,BWA]].forEach(([x,y,w,h,c])=>{
+          bx(x,y,w,h,c);
+          // Dark windows (far buildings just have dim squares)
+          for(let wy=y+2;wy<y+h-2;wy+=5) for(let wx2=x+2;wx2<x+w-2;wx2+=6){
+            const lit=Math.sin(wx2*7.3+wy*3.1)>0.4;
+            bx(wx2,wy,3,3,lit?WND2:'#1c1828');
+          }
+        });
+        // ── MID GROUND BUILDINGS (detailed facades) ──
+        // Left inn
+        drawBuilding(0, 8, 30, 28, WLB, RFA, WLC);
+        // Inn windows with warm glow
+        [[2,14],[2,20],[8,14],[8,20],[14,14],[14,20],[20,14],[20,20]].forEach(([wx2,wy])=>drawWindow(wx2,wy,WNA2));
+        // Inn sign (hanging, Backbone style)
+        bx(24,16,1,6,WB); bx(22,18,6,4,WC); px(22,18,WE);px(27,18,WE);
+        px(24,19,NIA); px(25,19,NIB); px(23,19,NIA); // glowing sign dots
+        g.globalAlpha=0.2; bx(20,16,10,8,NIA); g.globalAlpha=1;
+        // Chimney
+        bx(4,5,3,4,STC2); px(3,5,STB2);px(7,5,STB2);
+        if(wx!=='sunny'){ const sm=t%4; if(sm<3)px(5+(sm===0?0:sm===1?1:-1),sm*2+5,'#9090a8'); }
+        // Right guild hall
+        drawBuilding(100, 6, 40, 30, WLC, RFB, WLD);
+        [[102,12],[108,12],[114,12],[120,12],[126,12],[102,20],[108,20],[114,20],[120,20],[126,20]].forEach(([wx2,wy])=>drawWindow(wx2,wy,WNB2));
+        // Guild sign (neon-ish Backbone style)
+        bx(133,18,1,4,WD2); bx(130,18,6,3,WE);
+        g.globalAlpha=0.25; bx(128,16,10,7,NHA); g.globalAlpha=1;
+        px(131,19,NHB); px(132,19,NHA); px(133,19,NHB);
+        // ── STREET LAMP (Backbone signature) ──
+        bx(68,22,2,14,STC2); // post
+        bx(65,22,8,3,STD2); bx(65,22,8,1,STB2); // crossbar
+        bx(64,20,10,4,STC2); px(64,20,BK);px(73,20,BK); // lamp housing
+        const lp=t%4;
+        bx(65,20,8,3,lp<2?NIA:NIB); px(66,20,lp<2?NIB:'#fff8a0');
+        g.globalAlpha=0.3; bx(60,18,18,8,NIA); g.globalAlpha=0.15; bx(56,17,26,10,NIA); g.globalAlpha=1;
+        // ── COBBLESTONE GROUND (Backbone detailed) ──
+        for(let y=36;y<H;y++){
+          for(let x=0;x<W;x++){
+            const cb=((x+Math.floor(y*0.7))%4<2)?STA2:STB2;
+            px(x,y,cb);
+          }
+        }
+        for(let y=36;y<H;y+=4) bx(0,y,W,1,BK);
+        for(let y=36;y<H;y+=4){const off=(Math.floor(y/4))%2===0?0:5;for(let x=off;x<W;x+=10)px(x,y,STC2);}
+        // Puddle reflections (Backbone signature — neon in puddles)
+        if(wx==='rainy'||wx==='snowy'){
+          g.globalAlpha=0.15; bx(30,38,20,4,NIA); bx(78,40,16,3,NHB); g.globalAlpha=1;
+        }
+        // ── HERO ──
+        drawHero(54, 34-13, 0);
+        // ── NPC ──
+        row(80,24,[O,BK,BK,BK,BK,BK,O]);
+        row(79,25,[O,BK,'#d4c090','#d4c090','#e0cc98','#d4c090','#d4c090',BK,O]);
+        row(79,26,[O,BK,'#c8a860','#c8b070','#c8b070','#c8a860',BK,O]);
+        row(79,27,[O,BK,'#4838a0','#5848b8','#5848b8','#4838a0',BK,O]);
+        row(79,28,[O,BK,'#3828a0','#4838b8','#3828a0',BK,O]);
+        row(79,29,[O,O,BK,HBT,HBT,BK,O]);
+        row(79,30,[O,O,BK,HBT2,HBT2,BK,O]);
+      },
+
+      combat(fr, wx) {
+        const t = Math.floor(fr/5);
+        // ── DARK STORMY SKY always in combat ──
+        drawSky([SN1,SN1,SN2,SN2,SN3,SN3,SN4,SN5,SN5]);
+        // Storm cloud masses
+        [[0,0,50,8,'#1c0c28'],[44,1,48,7,'#24102e'],[88,0,44,8,'#1c0c28'],[128,2,36,6,'#281430']].forEach(([x,y,w,h,c])=>bx(x,y,w,h,c));
+        // Blood moon
+        bx(70,1,14,10,'#6a0c0c'); bx(71,1,12,10,'#8c1818'); bx(72,1,10,10,'#b02424');
+        px(70,1,BK);px(83,1,BK);px(70,10,BK);px(83,10,BK);
+        px(73,2,'#cc3838');px(76,2,'#ee4444'); px(76,6,'#7a1010');px(79,5,'#601010');
+        g.globalAlpha=0.2; bx(66,0,22,12,'#6a0c0c'); g.globalAlpha=1;
+        // Lightning
+        const lf=Math.floor(fr/3)%100;
+        if(lf<3||lf===50){ g.globalAlpha=0.25; bx(0,0,W,32,'#d8eeff'); g.globalAlpha=1; }
+        // ── RUINED BACKGROUND ──
+        // Broken wall/arch silhouette
+        bx(10,12,8,24,STA2); bx(16,8,6,28,STA2); // left ruin pillar
+        bx(10,8,14,4,STA2); // arch stub
+        px(10,7,STB2);px(11,7,STB2);px(12,8,STB2); // rubble top
+        bx(130,10,8,26,STA2); bx(124,6,14,30,STA2); // right ruin
+        bx(122,6,18,4,STA2);
+        // Scattered rubble
+        [[28,32,STC2],[29,33,STD2],[45,33,STA2],[90,32,STD2],[110,33,STC2],[125,32,STA2]].forEach(([x,y,c])=>{bx(x,y,2,1,c);});
+        // Dead tree silhouette (Backbone style)
+        bx(50,14,2,22,LA); px(48,16,LA);px(47,17,LA);px(46,18,LA); // left branch
+        px(52,18,LA);px(53,19,LA);px(54,20,LA); // right branch
+        px(50,20,LA);px(49,22,LA);px(48,24,LA); // sub branch
+        // ── GROUND ──
+        drawGround(34, [STA2,STB2,STB2,STC2,STC2,STD2,STD2]);
+        // Ground cracks
+        for(let x=0;x<W;x+=12) bx(x,34,1,8,BK);
+        [[20,35,STB2],[50,36,STA2],[88,35,STB2],[110,36,STA2]].forEach(([x,y,c])=>px(x,y,c));
+        // Bones
+        [[40,35,STG],[41,35,STG],[65,36,STG],[96,35,STG],[97,36,STG]].forEach(([x,y,c])=>px(x,y,c));
+        // ── HERO (combat stance, left) ──
+        const hx=22,hy=34-16;
+        row(hx+2,hy,   [O,BK,BK,BK,BK,BK,O]);
+        row(hx+1,hy+1, [O,BK,HAC,HAD,HAD,HAC,BK,O]);
+        row(hx+1,hy+2, [O,BK,HAB,HAC,HAD,HAB,BK,O]);
+        row(hx+1,hy+3, [O,BK,HAA,HAB,HAC,HAA,BK,O]);
+        row(hx+2,hy+4, [O,BK,'#88c0f0','#88c0f0',BK,O]);
+        row(hx,  hy+5, [O,BK,HAB,HAC,HAD,HAC,HAB,BK,O]);
+        row(hx,  hy+6, [O,BK,HAA,HAB,HAC,HAB,HAA,BK,O]);
+        row(hx,  hy+7, [O,BK,HAK,HAA,HAB,HAA,HAK,BK,O]);
+        // Shield
+        bx(hx-4,hy+4,4,9,HAB); px(hx-4,hy+4,HAA);px(hx-1,hy+4,HAA);px(hx-4,hy+12,HAA);px(hx-1,hy+12,HAA);
+        px(hx-3,hy+6,HAD);px(hx-2,hy+8,HGD2);
+        for(let i=4;i<13;i++) px(hx-5,hy+i,BK);
+        // Sword raised
+        const ss=(t%6<3)?0:1;
+        px(hx+7,hy+2-ss,HSW2);px(hx+8,hy+1-ss,HSW2);px(hx+9,hy+0-ss,HSW);px(hx+10,hy-1-ss,HSW);
+        px(hx+7,hy+3-ss,HGD2);px(hx+8,hy+3-ss,HGD);
+        // Legs
+        row(hx+1,hy+9, [O,HPT3,HPT2,HPT,HPT2,HPT3,O]);
+        row(hx+1,hy+10,[O,HPT2,HPT,HPT2,HPT,HPT2,O]);
+        row(hx+1,hy+11,[O,HBT2,HBT,HBT2,HBT,HBT2,O]);
+        row(hx+1,hy+12,[O,HBT,HBT2,HBT,HBT2,HBT,O]);
+        // ── WRAITH ENEMY (right) ──
+        const wx2=118,wy=34-18,ef=t%8;
+        row(wx2+2,wy,   [O,BK,WRC,WRD,WRC,BK]);
+        row(wx2+1,wy+1, [O,BK,WRB,WRC,WRD,WRC,BK,O]);
+        row(wx2,  wy+2, [O,BK,WRB,WRF,WRG,WRG,WRF,WRB,BK,O]);
+        row(wx2,  wy+3, [O,BK,WRC,WRD,WRD,WRD,WRC,BK,O]);
+        row(wx2-1,wy+4, [O,BK,WRB,WRC,WRD,WRD,WRC,WRB,BK,O]);
+        row(wx2-1,wy+5, [O,WRA,WRB,WRC,WRE,WRC,WRB,WRA,BK,O]);
+        row(wx2-2,wy+6, [O,WRA,WRB,WRC,WRD,WRC,WRB,WRA,WRA,BK]);
+        row(wx2-2,wy+7, [WRA,WRB,WRC,WRD,WRC,WRB,WRA,WRA,BK]);
+        row(wx2-2,wy+8, [WRA,WRB,WRC,WRC,WRB,WRA,WRA,BK]);
+        row(wx2-1,wy+9, [WRA,WRB,WRB,WRA,WRA,BK]);
+        row(wx2,  wy+10,[WRA,WRB,WRA,WRA,BK]);
+        const sa=ef<4?0:1;
+        px(wx2-3,wy+4-sa,WRE);px(wx2-4,wy+3-sa,WRF);px(wx2-5,wy+2-sa,WRG);
+        px(wx2-6,wy+1-sa,WRF);px(wx2-6,wy+2-sa,WRE);
+        px(wx2-3,wy+5,WB);px(wx2-3,wy+6,WB);px(wx2-3,wy+7,WA);
+        px(wx2+2,wy+2,ef<4?WRG:WRF);px(wx2+5,wy+2,ef<4?WRG:WRF);
+        // ── CLASH SPARKS ──
+        const cx=72,cy=20,sp=t%5;
+        const spk=[[0,0,'#fef4a8'],[1,-1,'#fcdc60'],[2,-2,'#f8b020'],[-1,-1,'#fcdc60'],[-2,-2,'#f8b020'],[1,1,'#f8b020'],[-1,1,'#f07800'],[3,-1,'#f05000'],[-3,-1,'#f05000'],[0,-3,'#f8b020'],[2,-3,'#fcdc60'],[-2,-3,'#f07800']];
+        spk.forEach(([dx,dy,c])=>{ const ox2=sp%3,oy2=sp%2; px(cx+dx+ox2,cy+dy+oy2,c); });
+        px(cx,cy,'#fef4a8'); px(cx-1,cy,'#fcdc60'); px(cx+1,cy,'#fcdc60'); px(cx,cy-1,'#fef4a8');
+      },
+
+      dungeon(fr, wx) {
+        const t = Math.floor(fr/6);
+        // ── STONE ARCHITECTURE (Backbone side-scrolling corridor) ──
+        bx(0,0,W,H,STA2);
+        // Ceiling arch stones
+        bx(0,0,W,4,STB2);
+        for(let x=0;x<W;x+=8){bx(x,0,1,4,BK);bx(x+4,0,1,4,STC2);}
+        bx(0,4,W,1,BK);
+        // Left wall with column
+        bx(0,0,12,H,STB2);
+        for(let y=2;y<H;y+=6){bx(0,y,12,4,STC2);px(0,y,STD2);px(11,y,STD2);px(1,y,STG);}
+        for(let y=5;y<H;y+=6) bx(0,y,12,1,BK);
+        for(let y=0;y<H;y+=6){px(6,y,BK);px(6,y+2,STB2);}
+        // Right wall with column
+        bx(148,0,12,H,STB2);
+        for(let y=2;y<H;y+=6){bx(148,y,12,4,STC2);px(148,y,STD2);px(159,y,STD2);px(149,y,STG);}
+        for(let y=5;y<H;y+=6) bx(148,y,12,1,BK);
+        for(let y=0;y<H;y+=6){px(154,y,BK);px(154,y+2,STB2);}
+        // Arch entrance (side view — stones around doorway)
+        for(let x=12;x<148;x++) px(x,0,BK);
+        [[12,1],[13,1],[14,0],[15,0],[20,0],[21,0],[139,0],[140,0],[145,0],[146,1],[147,1]].forEach(([x,y])=>px(x,y,STC2));
+        // Floor
+        bx(0,44,W,12,STB2);
+        for(let x=0;x<W;x+=10) bx(x,44,1,12,BK);
+        for(let y=44;y<H;y+=6) bx(0,y,W,1,BK);
+        for(let x=1;x<W;x+=10) px(x,45,STC2);
+        // Depth corridor (perspective lines, Backbone style)
+        bx(28,4,104,40,STA2);
+        for(let y=4;y<44;y+=5){const ind=Math.floor((y-4)/5)*5;bx(28+ind,y,104-ind*2,1,STB2);}
+        for(let x=28;x<132;x+=14){const s=Math.floor((x-28)/14);bx(x+s,4,1,40,STB2);}
+        bx(50,12,60,26,STA2); bx(60,18,40,16,'#100e18'); bx(68,22,24,10,BK);
+        // ── TORCHES (Backbone warm flame glow) ──
+        const tf=t%5;
+        bx(14,8,2,4,WB); bx(12,8,6,2,WC); px(12,8,BK);px(17,8,BK);
+        bx(13,6,4,3,WD2); px(14,5,BK);px(15,5,BK);
+        px(14,5,tf<2?'#f8b020':'#f05000');px(13,6,tf<3?'#e04800':'#f07800');
+        px(15,6,tf<2?'#e04800':'#d03400');px(14,6,tf<2?'#f8b020':'#fef060');px(14,4,tf===0?'#f8b020':O);
+        g.globalAlpha=0.2+(tf%2)*0.1; bx(10,4,12,10,'#f05000'); g.globalAlpha=1;
+        bx(144,8,2,4,WB); bx(142,8,6,2,WC); px(142,8,BK);px(147,8,BK);
+        bx(143,6,4,3,WD2);
+        px(144,5,tf<2?'#f8b020':'#f05000');px(143,6,tf<3?'#e04800':'#f07800');
+        px(145,6,tf<2?'#e04800':'#d03400');px(144,6,tf<2?'#f8b020':'#fef060');
+        g.globalAlpha=0.2+(tf%2)*0.1; bx(138,4,12,10,'#f05000'); g.globalAlpha=1;
+        // ── BANNERS ──
+        bx(20,4,2,6,WD2); bx(21,5,6,5,RFA); px(21,5,'#cc2828');px(26,9,RFD);
+        bx(138,4,2,6,WD2); bx(133,5,6,5,WRB); px(133,5,WRD);px(138,9,WRC);
+        // ── STONE SARCOPHAGUS ──
+        bx(60,38,40,7,STC2); bx(60,38,40,3,STD2);
+        for(let i=4;i<18;i+=3) px(60+i,38,BK);
+        px(61,39,STG);px(62,39,STG);
+        bx(60,37,40,1,BK); bx(59,38,1,8,BK); bx(100,38,1,8,BK);
+        // ── MYSTERIOUS FIGURE ──
+        const mx=76,my=22,mp=t%8;
+        row(mx+2,my,  [O,BK,WRD,WRD,WRC,BK]);
+        row(mx+1,my+1,[O,BK,WRC,WRD,WRD,WRC,BK]);
+        row(mx+1,my+2,[O,BK,WRB,mp<4?WRG:WRF,mp<4?WRG:WRF,WRB,BK]);
+        row(mx+1,my+3,[O,BK,WRC,WRD,WRD,WRC,BK]);
+        row(mx,  my+4,[O,WRB,WRC,WRD,WRD,WRC,WRB,BK]);
+        row(mx,  my+5,[WRA,WRB,WRC,WRC,WRB,WRA,BK]);
+        row(mx,  my+6,[WRA,WRB,WRB,WRA,WRA,BK]);
+        row(mx+1,my+7,[WRA,WRB,WRA,BK]);
+        px(mx+2,my+2,mp<4?WRG:WRF); px(mx+3,my+2,mp<4?WRG:WRF);
+      },
+
+      camp(fr, wx) {
+        const t = Math.floor(fr/6);
+        // ── NIGHT SKY ──
+        drawSky([SN1,SN1,SN2,SN2,SN3,SN3,SN4,SN4,SN5]);
+        if(wx==='cloudy'||wx==='rainy'||wx==='stormy'){
+          g.globalAlpha=0.7; drawSky([SC1,SC1,SC2,SC2,SC3,SC3,SC4,SC5,SC5]); g.globalAlpha=1;
+        }
+        // ── STARS ──
+        if(wx!=='cloudy'&&wx!=='rainy'&&wx!=='stormy'){
+          const STARS=[[3,2,6],[7,0,10],[12,3,3],[17,1,8],[23,0,13],[28,2,5],[34,3,9],[40,1,4],[46,0,11],[52,2,7],[58,1,2],[64,3,10],[70,0,6],[76,2,13],[82,1,4],[88,0,8],[94,3,11],[100,1,3],[106,0,9],[112,2,6],[118,3,12],[124,1,7],[130,0,4],[136,2,10],[142,1,5],[148,0,8],[155,2,13],[4,5,7],[9,4,11],[14,6,2],[20,4,14],[26,5,8],[32,4,5],[38,5,12],[44,4,3],[50,6,9],[56,4,6],[62,5,1],[68,4,10],[74,5,13],[80,4,4],[86,5,8],[92,4,7],[98,5,2],[104,4,11],[110,5,6],[116,4,3],[122,5,10],[128,4,9],[134,5,5],[140,4,12],[146,5,7],[152,4,2],[158,5,8]];
+          STARS.forEach(([x,y,ph])=>{ const tw=(t+ph)%16; if(x<W&&y<H)px(x,y,tw<5?STA:tw<9?STB:STC); });
+        }
+        // ── FULL MOON ──
+        if(wx!=='cloudy'&&wx!=='stormy'){
+          bx(130,1,14,12,MNB); bx(131,1,12,12,MNA);
+          px(130,1,MNK);px(143,1,MNK);px(130,12,MNK);px(143,12,MNK);
+          px(131,2,MNA);px(142,2,MNA);px(131,11,MNA);px(142,11,MNA);
+          px(133,2,MNA);px(134,2,MNA);px(133,3,MNA);
+          px(138,4,MNC);px(139,5,MNC);px(138,5,MNK);px(136,7,MNC);px(137,8,MNK);
+          g.globalAlpha=0.1; bx(126,0,22,15,MNA); g.globalAlpha=1;
+        }
+        // ── TREE SILHOUETTES (Backbone deep forest edge) ──
+        [0,10,18,28,104,114,124,136,148].forEach(ox=>{
+          bx(ox,6,12,30,LS); bx(ox+1,4,10,6,LA); bx(ox+2,2,8,5,LA); bx(ox+3,0,6,4,LA);
+          bx(ox+4,12,4,6,WA); // trunk visible at base
+        });
+        // ── GROUND ──
+        const gCols=wx==='snowy'?[SWB,SWC,SWD,SWD,SWC,SWB]:[GA,GB,GB,GC,GC,GD];
+        drawGround(34, gCols);
+        for(let x=0;x<W;x+=3){ px(x,34,wx==='snowy'?SWD:LG); px(x+1,33,wx==='snowy'?SWC:LH); }
+        // ── CAMPFIRE (Backbone warm glow) ──
+        // Rocks
+        [[58,42,STB2],[59,42,STC2],[68,42,STC2],[69,42,STB2],[57,43,STC2],[70,43,STB2]].forEach(([x,y,c])=>px(x,y,c));
+        // Logs
+        bx(58,43,12,2,WB); bx(63,40,2,6,WB); px(58,43,WA);px(69,43,WA); px(63,40,WC);px(64,40,WC);
+        // Fire
+        const ff=t%8;
+        bx(60,42,8,2,FRA); px(62,42,FRB);px(64,42,FRB);
+        bx(60,39,8,4,FRB); bx(61,37,6,4,FRC); bx(62,35,4,4,FRD); bx(63,33,2,3,FRE);
+        if(ff<2){px(63,32,FRE);px(64,31,'#fcbc00');px(63,31,FRD);}
+        else if(ff<4){px(63,32,'#fef060');px(62,31,FRE);px(64,30,'#fcbc00');px(63,30,FRG);}
+        else if(ff<6){px(63,32,FRF);px(64,31,FRG);px(63,31,FRF);px(62,30,FRE);}
+        else{px(63,32,FRG);px(64,31,FRF);px(62,31,FRE);px(63,30,FRG);px(64,30,FRF);}
+        g.globalAlpha=0.22; bx(52,30,24,14,FRC); g.globalAlpha=0.12; bx(46,32,36,12,FRB); g.globalAlpha=1;
+        // ── SEATED HERO ──
+        const sx=44,sy=34;
+        row(sx+2,sy-11,[O,BK,BK,BK,BK,BK,O]);
+        row(sx+1,sy-10,[O,BK,HHR2,HHR,HHR,HHR2,BK,O]);
+        row(sx+1,sy-9, [O,BK,HSK3,HSK,HSK,HSK3,BK,O]);
+        row(sx+1,sy-8, [O,BK,HSK2,HSK,HSK2,HSK,BK,O]);
+        row(sx+1,sy-7, [O,BK,BK,BK,BK,BK,O]);
+        row(sx,  sy-6, [O,BK,HCK2,HCK3,HCK3,HCK2,BK,O]);
+        row(sx,  sy-5, [O,BK,HCK,HCK2,HCK3,HCK2,HCK,BK,O]);
+        row(sx-1,sy-4, [O,BK,HCK,HCK,HCK2,HCK2,HCK,HCK,BK,O]);
+        row(sx-1,sy-3, [O,HBT2,HBT,HBT2,HBT,HBT,HBT,HBT2,O]);
+        row(sx-1,sy-2, [HBT,HBT2,HBT,BK,BK,BK,HBT,HBT2,HBT]);
+        px(sx+7,sy-5,HSK3);px(sx+8,sy-5,HSK2);px(sx+9,sy-6,WC);px(sx+10,sy-7,WB);
+        // ── TENT (Backbone side view, angled) ──
+        const tx=86,ty=28;
+        bx(tx,ty+8,22,8,DC); // tent body
+        // Tent slope left
+        for(let i=0;i<10;i++){bx(tx+i,ty+i,1,10-i,DB);px(tx+i,ty+i-1,DC);}
+        // Tent slope right
+        for(let i=0;i<10;i++){bx(tx+21-i,ty+i,1,10-i,DD);px(tx+21-i,ty+i-1,DC);}
+        px(tx+10,ty-1,DE); // peak
+        bx(tx+8,ty+12,6,5,WA); // door
+        // Tent guy-rope
+        px(tx+10,ty-1,WD2);px(tx+6,ty+3,WD2);px(tx+4,ty+5,WD2);px(tx+2,ty+7,WD2);
+        // ── FIREFLIES (if not snowy/rainy) ──
+        if(wx!=='rainy'&&wx!=='snowy'&&wx!=='stormy'){
+          [[45,30,7],[72,28,3],[80,32,11],[92,26,5],[38,27,9]].forEach(([x,y,ph])=>{
+            const fw=(t+ph)%24; if(fw<10&&x<W)px(x,y,'#90e840');
+          });
+        }
+      }
+    };
+
+    /* ══ MAIN ANIMATE LOOP ════════════════════════════════════ */
+    const animate = () => {
+      frameRef.current++;
+      g.clearRect(0,0,W*P,H*P);
+      const sc = context||'explore';
+      const wx = weather||'sunny';
+      const fn = scenes[sc]||scenes.explore;
+      fn(frameRef.current, wx);
+      drawWeather(wx, frameRef.current);
+      drawDice(diceState, frameRef.current);
+      animRef.current = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animRef.current);
+  }, [context, weather, diceState]);
+
+  return React.createElement('canvas', {
+    ref: canvasRef,
+    width: 320, height: 112,
+    style: {
+      display: 'block', width: '100%', height: 'auto',
+      imageRendering: 'pixelated', background: '#080612',
+      flexShrink: 0,
+      borderTop: '2px solid '+(T?.border||'#333'),
+      borderBottom: '2px solid '+(T?.border||'#333'),
+    }
+  });
+}
+
+
+
+function QuickActions({ player, onCommand, isLoading, T, tf }) {
+  const ctx = player?.context || 'explore';
+  const cin = { fontFamily: "'Cinzel','Palatino Linotype',serif" };
+
+  // Curated context-sensitive quick actions
+  const QUICK = {
+    explore: [
+      { id:'look',      icon:'👁',  label:'Look'    },
+      { id:'search',    icon:'🔍', label:'Search'  },
+      { id:'listen',    icon:'👂', label:'Listen'  },
+      { id:'rest',      icon:'🛏', label:'Rest'    },
+      { id:'camp',      icon:'🔥', label:'Camp'    },
+      { id:'dungeon',   icon:'🕳️', label:'Dungeon' },
+    ],
+    town: [
+      { id:'look',        icon:'👁',  label:'Look'    },
+      { id:'talk',        icon:'💬', label:'Talk'    },
+      { id:'ask',         icon:'❓', label:'Ask'     },
+      { id:'barter',      icon:'🪙', label:'Barter'  },
+      { id:'noticeboard', icon:'📋', label:'Board'   },
+      { id:'rest',        icon:'🛏', label:'Rest'    },
+    ],
+    combat: [
+      { id:'attack',  icon:'⚔️', label:'Attack'  },
+      { id:'dodge',   icon:'💨', label:'Dodge'   },
+      { id:'spell',   icon:'✨', label:'Spell'   },
+      { id:'use_item',icon:'🎒', label:'Item'    },
+      { id:'flee',    icon:'🏃', label:'Flee'    },
+    ],
+    npc: [
+      { id:'talk',    icon:'💬', label:'Talk'    },
+      { id:'ask',     icon:'❓', label:'Ask'     },
+      { id:'look',    icon:'👁',  label:'Look'    },
+      { id:'listen',  icon:'👂', label:'Listen'  },
+      { id:'barter',  icon:'🪙', label:'Barter'  },
+      { id:'use_item',icon:'🎒', label:'Item'    },
+    ],
+    dungeon: [
+      { id:'look',    icon:'👁',  label:'Look'    },
+      { id:'search',  icon:'🔍', label:'Search'  },
+      { id:'listen',  icon:'👂', label:'Listen'  },
+      { id:'descend', icon:'⬇️', label:'Descend' },
+      { id:'ascend',  icon:'⬆️', label:'Ascend'  },
+      { id:'use_item',icon:'🎒', label:'Item'    },
+    ],
+    camp: [
+      { id:'look',    icon:'👁',  label:'Look'    },
+      { id:'rest',    icon:'🛏', label:'Rest'    },
+      { id:'camp',    icon:'🔥', label:'Camp'    },
+      { id:'pray',    icon:'🙏', label:'Pray'    },
+      { id:'search',  icon:'🔍', label:'Search'  },
+      { id:'use_item',icon:'🎒', label:'Item'    },
+    ],
+  };
+
+  const actions = QUICK[ctx] || QUICK.explore;
+
+  return React.createElement('div', {
+    style: {
+      display: 'flex',
+      gap: 4,
+      padding: '6px 12px 4px',
+      borderTop: '1px solid ' + T.border + '44',
+      flexWrap: 'wrap',
+      flexShrink: 0,
+    }
+  },
+    actions.map(a =>
+      React.createElement('button', {
+        key: a.id,
+        onClick: () => { if (!isLoading) onCommand(a.id); },
+        disabled: isLoading,
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 1,
+          padding: '5px 7px',
+          background: 'transparent',
+          border: '1px solid ' + T.border + '88',
+          color: isLoading ? T.textFaint : T.text,
+          cursor: isLoading ? 'default' : 'pointer',
+          borderRadius: 4,
+          fontSize: 16,
+          opacity: isLoading ? 0.4 : 1,
+          transition: 'all 0.12s',
+          minWidth: 42,
+        },
+        onMouseEnter: e => { if (!isLoading) { e.currentTarget.style.background = T.accent + '22'; e.currentTarget.style.borderColor = T.accent; } },
+        onMouseLeave: e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = T.border + '88'; },
+      },
+        React.createElement('span', null, a.icon),
+        React.createElement('span', { style: { fontSize: 8, color: T.textMuted, letterSpacing: 1, ...cin } }, a.label.toUpperCase())
+      )
+    )
+  );
+}
+
+
+function MiniMap({ player, T, tf }) {
+  const loc = player?.location || 'Millhaven Village';
+
+  // Organic, hand-placed positions — no grid
+  const NODES = {
+    'Millhaven Village': { x: 22,  y: 78, type: 'village', short: 'Millhaven' },
+    'Thornwick Village': { x: 14,  y: 32, type: 'village', short: 'Thornwick' },
+    'Ashford Town':      { x: 44,  y: 68, type: 'town',    short: 'Ashford'   },
+    'Irongate Town':     { x: 48,  y: 30, type: 'town',    short: 'Irongate'  },
+    'Duskwall City':     { x: 72,  y: 65, type: 'city',    short: 'Duskwall'  },
+    'Solara City':       { x: 76,  y: 22, type: 'city',    short: 'Solara'    },
+    'Aethermoor Capital':{ x: 91,  y: 44, type: 'capital', short: 'Capital'   },
+  };
+
+  // Slightly curved paths using quadratic bezier control points
+  const PATHS = [
+    { a:'Millhaven Village', b:'Ashford Town',      cx: 28, cy: 76, danger:1 },
+    { a:'Millhaven Village', b:'Thornwick Village', cx: 12, cy: 56, danger:1 },
+    { a:'Thornwick Village', b:'Irongate Town',     cx: 28, cy: 26, danger:3 },
+    { a:'Ashford Town',      b:'Irongate Town',     cx: 50, cy: 50, danger:2 },
+    { a:'Ashford Town',      b:'Duskwall City',     cx: 60, cy: 74, danger:4 },
+    { a:'Irongate Town',     b:'Solara City',       cx: 64, cy: 24, danger:2 },
+    { a:'Duskwall City',     b:'Aethermoor Capital',cx: 84, cy: 58, danger:3 },
+    { a:'Solara City',       b:'Aethermoor Capital',cx: 86, cy: 30, danger:2 },
+  ];
+
+  const W = 200, H = 130;
+  const tx = (px) => (px / 100) * W;
+  const ty = (py) => (py / 100) * H;
+
+  const roadCol  = (d) => d >= 4 ? '#7a2828' : d >= 3 ? '#6a4820' : '#3a4a30';
+  const roadDash = (d) => d >= 3 ? '3 3' : d >= 2 ? '5 2' : 'none';
+
+  const nodeCol = (name, type) => {
+    if (name === loc)    return T.gold;
+    if (type==='capital') return '#b060ee';
+    if (type==='city')    return '#5088cc';
+    if (type==='town')    return T.accent;
+    return '#708060';
+  };
+
+  const nodeR = (name, type) =>
+    name === loc ? 5.5 : type==='capital' ? 5 : type==='city' ? 4 : type==='town' ? 3.5 : 2.8;
+
+  // Small mountain triangles for flavour
+  const MOUNTS = [[58,48],[62,44],[68,52],[34,42],[38,36]];
+  const TREES  = [[8,44],[10,50],[30,58],[82,74],[88,68],[6,64]];
+  const WAVES  = [[56,88],[62,90],[70,86]];
+
+  return React.createElement('div', {
+    style: {
+      flex: 1, display:'flex', flexDirection:'column', alignItems:'center',
+      justifyContent:'center',
+      background: 'linear-gradient(160deg,#1a1508 0%,#120f04 60%,#0e0c06 100%)',
+      borderLeft:`1px solid ${T.border}`,
+      overflow:'hidden',
+      position:'relative',
+    }
+  },
+    React.createElement('svg', {
+      width:'100%', height:'100%',
+      viewBox:`0 0 ${W} ${H}`,
+      style:{ display:'block' },
+    },
+
+      // ── Parchment vignette ──
+      React.createElement('defs', null,
+        React.createElement('radialGradient', { id:'vig', cx:'50%', cy:'50%', r:'70%' },
+          React.createElement('stop', { offset:'0%',   stopColor:'#2a2008', stopOpacity:0   }),
+          React.createElement('stop', { offset:'100%', stopColor:'#050300', stopOpacity:0.7 })
+        ),
+        React.createElement('filter', { id:'wobble' },
+          React.createElement('feTurbulence', { type:'turbulence', baseFrequency:'0.04', numOctaves:'2', result:'noise' }),
+          React.createElement('feDisplacementMap', { in:'SourceGraphic', in2:'noise', scale:'1.2', xChannelSelector:'R', yChannelSelector:'G' })
+        )
+      ),
+
+      // ── Terrain: mountains ──
+      ...MOUNTS.map(([mx,my],i) =>
+        React.createElement('polygon', {
+          key:'m'+i,
+          points:`${tx(mx)},${ty(my+4)} ${tx(mx-3)},${ty(my+4)} ${tx(mx)},${ty(my-1)}`,
+          fill:'#2a3020', stroke:'#3a4030', strokeWidth:0.5, opacity:0.7,
+        })
+      ),
+
+      // ── Terrain: trees ──
+      ...TREES.map(([tx2,ty2],i) =>
+        React.createElement('g', { key:'t'+i, opacity:0.55 },
+          React.createElement('circle', { cx:tx(tx2), cy:ty(ty2), r:2.2, fill:'#1c2e10' }),
+          React.createElement('circle', { cx:tx(tx2)+1.5, cy:ty(ty2)-1, r:1.6, fill:'#243818' }),
+        )
+      ),
+
+      // ── Water waves ──
+      ...WAVES.map(([wx,wy],i) =>
+        React.createElement('text', {
+          key:'w'+i, x:tx(wx), y:ty(wy),
+          fontSize:4.5, fill:'#1a3a50', opacity:0.6, fontFamily:'serif',
+        }, '〜')
+      ),
+
+      // ── Roads (curved bezier) ──
+      ...PATHS.map(p => {
+        const na = NODES[p.a], nb = NODES[p.b];
+        if (!na||!nb) return null;
+        const d = `M ${tx(na.x)} ${ty(na.y)} Q ${tx(p.cx)} ${ty(p.cy)} ${tx(nb.x)} ${ty(nb.y)}`;
+        return React.createElement('g', { key:p.a+p.b },
+          // Road shadow
+          React.createElement('path', {
+            d, fill:'none',
+            stroke:'#000', strokeWidth:2.5, strokeLinecap:'round',
+            opacity:0.3,
+          }),
+          // Road itself
+          React.createElement('path', {
+            d, fill:'none',
+            stroke: roadCol(p.danger),
+            strokeWidth: p.danger>=3 ? 1.2 : 1.6,
+            strokeLinecap:'round',
+            strokeDasharray: roadDash(p.danger),
+            opacity:0.85,
+          }),
+        );
+      }),
+
+      // ── Location nodes ──
+      ...Object.entries(NODES).map(([name, n]) => {
+        const isHere = name === loc;
+        const r = nodeR(name, n.type);
+        const col = nodeCol(name, n.type);
+        const nx = tx(n.x), ny = ty(n.y);
+        const labelY = ny + r + (n.y > 70 ? -r - 4 : r + 7);
+        return React.createElement('g', { key:name },
+          // Outer glow for current location
+          isHere && React.createElement('circle', {
+            cx:nx, cy:ny, r:r+5,
+            fill:'none', stroke:T.gold, strokeWidth:1, opacity:0.3,
+          }),
+          isHere && React.createElement('circle', {
+            cx:nx, cy:ny, r:r+2.5,
+            fill:'none', stroke:T.gold, strokeWidth:0.8, opacity:0.55,
+          }),
+          // Node shadow
+          React.createElement('circle', { cx:nx+0.6, cy:ny+0.8, r:r+0.5, fill:'#000', opacity:0.4 }),
+          // Node fill
+          React.createElement('circle', { cx:nx, cy:ny, r, fill:col, stroke: isHere?T.gold:'#0a0806', strokeWidth: isHere?1.2:0.8 }),
+          // Inner dot for towns/cities
+          (n.type==='town'||n.type==='city'||n.type==='capital') &&
+            React.createElement('circle', { cx:nx, cy:ny, r:r*0.35, fill:'#0a0806', opacity:0.5 }),
+          // Pulsing ring for current location (static, just decorative extra ring)
+          isHere && React.createElement('circle', {
+            cx:nx, cy:ny, r:r+0.8,
+            fill:'none', stroke:'#fff8d0', strokeWidth:0.5, opacity:0.6,
+          }),
+          // Label
+          React.createElement('text', {
+            x:nx, y:labelY,
+            textAnchor:'middle',
+            fontSize: isHere ? 6 : 5.5,
+            fill: isHere ? T.gold : '#a09070',
+            fontFamily:"'Cinzel','Palatino Linotype',serif",
+            fontWeight: isHere ? 'bold' : 'normal',
+            letterSpacing:0.3,
+            filter: isHere ? undefined : undefined,
+          }, n.short)
+        );
+      }),
+
+      // ── Vignette overlay ──
+      React.createElement('rect', { x:0, y:0, width:W, height:H, fill:'url(#vig)' }),
+
+      // ── Title ──
+      React.createElement('text', {
+        x:W/2, y:H-3,
+        textAnchor:'middle',
+        fontSize:4.5, fill:'#6a5830', opacity:0.7,
+        fontFamily:"'Cinzel','Palatino Linotype',serif",
+        letterSpacing:2,
+      }, 'AETHERMOOR')
+    )
+  );
+}
+
+
+function InputBar({ player, onFreeText, isLoading, T, tf, isDyslexic }) {
+  const [text, setText] = React.useState('');
+  const inputRef = React.useRef(null);
+  const ff  = isDyslexic ? "'OpenDyslexic',Arial,sans-serif" : "'Crimson Text',Georgia,serif";
+  const cin = isDyslexic ? "'OpenDyslexic',Arial,sans-serif" : "'Cinzel','Palatino Linotype',serif";
+  const ctx = player?.context || 'explore';
+
+  const submit = () => {
+    const t = text.trim();
+    if (!t || isLoading) return;
+    onFreeText(t);
+    setText('');
+    inputRef.current?.focus();
+  };
+
+  // Context hint for placeholder
+  const placeholders = {
+    combat:  isLoading ? 'The dice are cast...' : 'What do you do? (attack, dodge, cast a spell...)',
+    town:    isLoading ? 'The world stirs...'   : 'What do you do?',
+    npc:     isLoading ? 'They await your words...' : 'What do you say?',
+    dungeon: isLoading ? 'The darkness listens...' : 'What do you do?',
+    camp:    isLoading ? 'The fire crackles...'  : 'What do you do?',
+    explore: isLoading ? 'The Fates weave your story...' : 'What do you do?',
+  };
+
+  return React.createElement('div', {
+    style: { background: T.panelAlt, borderTop: `2px solid ${T.border}`, flexShrink: 0 }
+  },
+    React.createElement('div', {
+      style: { display: 'flex', gap: 8, padding: '10px 10px', alignItems: 'center' }
+    },
+      React.createElement('input', {
+        ref: inputRef,
+        value: text,
+        onChange: e => setText(e.target.value),
+        onKeyDown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } },
+        placeholder: placeholders[ctx] || placeholders.explore,
+        disabled: isLoading,
+        style: {
+          flex: 1,
+          background: T.inputBg || T.bg,
+          border: `1px solid ${T.border}`,
+          color: T.text,
+          padding: '11px 14px',
+          fontSize: isDyslexic ? 15 : 14,
+          fontFamily: ff,
+          outline: 'none',
+          borderRadius: 4,
+          opacity: isLoading ? 0.5 : 1,
+          letterSpacing: isDyslexic ? '0.05em' : 'normal',
+          transition: 'border-color 0.15s',
+        },
+        onFocus: e => { e.target.style.borderColor = T.accent; },
+        onBlur:  e => { e.target.style.borderColor = T.border; },
+      }),
+      React.createElement('button', {
+        onClick: submit,
+        disabled: isLoading || !text.trim(),
+        style: {
+          background: text.trim() && !isLoading ? T.accent + '22' : 'transparent',
+          border: `1px solid ${text.trim() && !isLoading ? T.accent : T.border}`,
+          color: text.trim() && !isLoading ? T.gold : T.textFaint,
+          padding: '11px 16px',
+          cursor: isLoading || !text.trim() ? 'default' : 'pointer',
+          fontSize: 16, borderRadius: 4,
+          transition: 'all 0.15s',
+          opacity: isLoading || !text.trim() ? 0.35 : 1,
+          fontFamily: cin,
+        }
+      }, '▶')
+    )
+  );
+}
+
+
+
 function AethermoorRPG() {
   const [screen, setScreen] = useState("loading");
   const [themeKey, setThemeKey] = useState("standard");
@@ -3554,7 +4661,7 @@ function AethermoorRPG() {
 
   // Load token balance from backend on startup
   React.useEffect(() => {
-    fetch(`${BACKEND_URL}/tokens/balance?playerId=${encodeURIComponent(playerId)}`)
+    fetch(`${BACKEND_URL}/tokens/balance?playerId=${encodeURIComponent(playerId)}`, { headers: { 'X-Game-Token': _gt } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d && typeof d.balance === 'number') setTokens(d.balance); })
       .catch(() => {});
