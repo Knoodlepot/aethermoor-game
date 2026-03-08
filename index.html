@@ -4637,7 +4637,7 @@ function AethermoorRPG() {
       const res = await fetch(`${BACKEND_URL}/tokens/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Game-Token': _gt },
-        body: JSON.stringify({ playerId, package: pkg, _gt }),
+        body: JSON.stringify({ playerId, packageId: pkg, _gt }),
       });
       const data = await res.json();
       if (data.url) {
