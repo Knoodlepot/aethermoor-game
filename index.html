@@ -4335,6 +4335,42 @@ function AethermoorRPG() {
     }
   }, [playerId]);
 
+  useEffect(() => {
+    async function init() {
+      try {
+        const theme = await storageGet("rpg-theme").catch(() => null);
+        if (theme?.value) setThemeKey(theme.value);
+        const pRaw  = await storageGet("rpg-player").catch(() => null);
+        const sRaw  = await storageGet("rpg-seed").catch(() => null);
+        const mRaw  = await storageGet("rpg-messages").catch(() => null);
+        const nRaw  = await storageGet("rpg-narrative").catch(() => null);
+        const lRaw  = await storageGet("rpg-log").catch(() => null);
+        const gbRaw = await storageGet("rpg-gravestones").catch(() => null);
+        if (gbRaw?.value) {
+          try { setLegacyGravestones(JSON.parse(gbRaw.value)); } catch(e) {}
+        }
+        if (pRaw?.value && sRaw?.value) {
+          const p    = JSON.parse(pRaw.value);
+          const seed = JSON.parse(sRaw.value);
+          const msgs = mRaw?.value ? JSON.parse(mRaw.value) : [];
+          const narr = nRaw?.value || "";
+          const lg   = lRaw?.value ? JSON.parse(lRaw.value) : [];
+          setPlayer(p);
+          setWorldSeed(seed);
+          setMessages(msgs);
+          setNarrative(narr);
+          setLog(lg);
+          setScreen("game");
+        } else {
+          setScreen("title");
+        }
+      } catch(e) {
+        setScreen("title");
+      }
+    }
+    init();
+  }, []);
+
   const spendToken = () => setTokens(function(prev) { return Math.max(0, prev - 1); });
   const addTokens = (amount) => setTokens(function(prev) { return prev + amount; });
 
