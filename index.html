@@ -5701,7 +5701,7 @@ function AethermoorRPG() {
         u = { ...u, quests };
       }
     }
-    if (/(steal|pickpocket|pilfer|filch|swipe|lift.*pocket|cut.*purse)/i.test(response)) {
+    if (/(?:you|your).{0,20}(steal|pickpocket|pilfer|filch|swipe|lift.*pocket|cut.*purse)/i.test(response)) {
       u = grantFactionXP(u, "the_forgotten", 15);
       u = grantFactionXP(u, "shadowmere_guild", 5);
       u = { ...u, reputation: (u.reputation || 0) - 5 };
@@ -5743,7 +5743,7 @@ function AethermoorRPG() {
       const pat = new RegExp(`(${fac.name}|${lastName}).{0,30}(favour|pleased|grateful|approves|reward|thanks)`, "i");
       if (pat.test(response)) u = grantFactionXP(u, fid, 15);
     });
-    if (/(heroic|bravely|courageously|selflessly|saved the day|great deed)/i.test(response)) {
+    if (/(saved the day|a great deed|act of heroism|a heroic act|true courage|selfless act|the crowd cheers|celebrated as a hero)/i.test(response)) {
       u = { ...u, reputation: (u.reputation || 0) + 5 };
     }
     if (/(reputation loss|lost.*reputation|reputation.*suffers|notoriety spreads|reviled by|branded a coward|cowardly act|word spreads of your cowardice|shamed.*publicly)/i.test(response)) {
