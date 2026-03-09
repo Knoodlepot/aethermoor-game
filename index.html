@@ -4489,7 +4489,7 @@ function AethermoorRPG() {
     return m ? m[1] : null;
   }
   function extractNpcTag(text) {
-    const m = text.match(/\{"npc"\s*:\s*(\{[^}]+\})\}/);
+    const m = text.match(/\{"npc"\s*:\s*(\{[\s\S]*?\})\}/);
     if (!m) return null;
     try {
       return JSON.parse(m[1]);
@@ -4498,7 +4498,7 @@ function AethermoorRPG() {
     }
   }
   function extractNpcUpdateTag(text) {
-    const m = text.match(/\{"npcUpdate"\s*:\s*(\{[^}]+\})\}/);
+    const m = text.match(/\{"npcUpdate"\s*:\s*(\{[\s\S]*?\})\}/);
     if (!m) return null;
     try {
       return JSON.parse(m[1]);
@@ -4531,8 +4531,8 @@ function AethermoorRPG() {
   }
   function stripContextTag(text) {
     let t = text.replace(/\{"context"\s*:\s*"\w+"\}/g, "");
-    t = t.replace(/\{"npc"\s*:\s*\{[^}]+\}\}/g, "");
-    t = t.replace(/\{"npcUpdate"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"npc"\s*:\s*\{[\s\S]*?\}\}/g, "");
+    t = t.replace(/\{"npcUpdate"\s*:\s*\{[\s\S]*?\}\}/g, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
     t = t.replace(/```[a-z]*\s*\{"context"\s*:\s*"\w+"\}\s*```/g, "");
