@@ -66,6 +66,51 @@ async function storageDelete(key) {
   localStorage.removeItem("aethermoor_" + key);
   return { key, deleted: true };
 }
+
+// ── Save Slot System (3 slots) ─────────────────────────────────────────────
+function getSaveSlotKey(slot) { return "aethermoor_save_slot_" + slot; }
+
+function readSaveSlot(slot) {
+  try {
+    const raw = localStorage.getItem(getSaveSlotKey(slot));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function writeSaveSlot(slot, player, worldSeed, messages, narrative, log) {
+  const data = {
+    slot,
+    savedAt: new Date().toISOString(),
+    playerName: player.name,
+    playerClass: player.class,
+    playerLevel: player.level,
+    playerLocation: player.location,
+    player: JSON.stringify(player),
+    worldSeed: JSON.stringify(worldSeed),
+    messages: JSON.stringify((messages || []).slice(-20)),
+    narrative: narrative || "",
+    log: JSON.stringify((log || []).slice(-60)),
+  };
+  localStorage.setItem(getSaveSlotKey(slot), JSON.stringify(data));
+}
+
+function deleteSaveSlot(slot) {
+  localStorage.removeItem(getSaveSlotKey(slot));
+}
+
+function loadSaveSlot(slot) {
+  const data = readSaveSlot(slot);
+  if (!data) return null;
+  try {
+    return {
+      player: JSON.parse(data.player),
+      worldSeed: JSON.parse(data.worldSeed),
+      messages: data.messages ? JSON.parse(data.messages) : [],
+      narrative: data.narrative || "",
+      log: data.log ? JSON.parse(data.log) : [],
+    };
+  } catch(e) { return null; }
+}
 const THEMES = {
   standard: {
     label: "Standard",
@@ -4382,6 +4427,8 @@ function AethermoorRPG() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const levelUpQueue = useRef([]);
   const levelUpTimer = useRef(null);
+  const [showSaveSlots, setShowSaveSlots] = React.useState(false);
+  const [saveSlotAction, setSaveSlotAction] = React.useState(null); // 'save' | 'load' | 'new'
   const logRef = useRef(null);
   useEffect(() => {
     if (logRef.current) {
@@ -5956,6 +6003,65 @@ function AethermoorRPG() {
           "A darkness stirs across the continent. Ancient powers awaken. The fate of Aethermoor rests with one unlikely soul — perhaps you."
         ),
 
+        /* ── Save Slot Modal ── */
+        showSaveSlots && React.createElement("div", { style: { position: "fixed", inset: 0, background: "#000000cc", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
+          React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.gold}`, width: "100%", maxWidth: 480, padding: 0, boxShadow: `0 0 60px ${T.gold}22` } },
+            React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+              React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 13, letterSpacing: 3 } },
+                saveSlotAction === "save" ? "\uD83D\uDCBE SAVE TO SLOT" : saveSlotAction === "load" ? "\u25B6 LOAD SAVE" : "\u2694 NEW GAME — SAVE FIRST?"
+              ),
+              React.createElement("button", { onClick: () => setShowSaveSlots(false), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715")
+            ),
+            saveSlotAction === "new" && React.createElement("div", { style: { padding: "10px 20px", background: "#1a0a0a", borderBottom: `1px solid ${T.border}` } },
+              React.createElement("span", { style: { color: "#c07050", fontSize: 13, fontStyle: "italic" } }, "Choose a slot to save your current game first, or click \"Skip\" to start fresh without saving.")
+            ),
+            React.createElement("div", { style: { padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 } },
+              [1, 2, 3].map(slot => {
+                const slotData = readSaveSlot(slot);
+                const isEmpty = !slotData;
+                const isActive = player && slot === (player._saveSlot || 0);
+                return React.createElement("div", { key: slot, style: { background: T.panelAlt, border: `1px solid ${isActive ? T.gold : T.border}`, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 } },
+                  React.createElement("div", { style: { ...tf, color: isActive ? T.gold : T.textMuted, fontSize: 11, letterSpacing: 2, minWidth: 50 } }, "SLOT " + slot, isActive && React.createElement("span", { style: { color: T.gold, fontSize: 9, display: "block", letterSpacing: 1 } }, "ACTIVE")),
+                  React.createElement("div", { style: { flex: 1 } },
+                    isEmpty
+                      ? React.createElement("div", { style: { color: T.textFaint, fontSize: 13, fontStyle: "italic" } }, "Empty slot")
+                      : React.createElement("div", null,
+                          React.createElement("div", { style: { color: T.text, fontSize: 14 } }, slotData.playerName, " the ", slotData.playerClass, " \xB7 Lv.", slotData.playerLevel),
+                          React.createElement("div", { style: { color: T.textMuted, fontSize: 11, marginTop: 2 } }, "\uD83D\uDCCD ", slotData.playerLocation, " \xB7 ", new Date(slotData.savedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }))
+                        )
+                  ),
+                  React.createElement("div", { style: { display: "flex", gap: 6 } },
+                    saveSlotAction === "load"
+                      ? !isEmpty && React.createElement("button", { onClick: () => {
+                          const d = loadSaveSlot(slot);
+                          if (d) {
+                            const p = { ...d.player, _saveSlot: slot };
+                            setPlayer(p); setWorldSeed(d.worldSeed); setMessages(d.messages); setNarrative(d.narrative); setLog(d.log);
+                            setShowSaveSlots(false); setScreen("game");
+                          }
+                        }, style: { ...tf, background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 12px", fontSize: 10, cursor: "pointer", letterSpacing: 1 } }, "LOAD")
+                      : React.createElement("button", { onClick: () => {
+                          if (saveSlotAction === "new") {
+                            if (!isEmpty) { if (!window.confirm("Overwrite save in Slot " + slot + "?")) return; }
+                            if (player) writeSaveSlot(slot, player, worldSeed, messages, narrative, log);
+                            setShowSaveSlots(false); clearSave();
+                          } else {
+                            if (!isEmpty) { if (!window.confirm("Overwrite save in Slot " + slot + "?")) return; }
+                            writeSaveSlot(slot, player, worldSeed, messages, narrative, log);
+                            const p2 = { ...player, _saveSlot: slot }; setPlayer(p2);
+                            saveGame(p2, worldSeed, messages, narrative, log);
+                            setShowSaveSlots(false);
+                          }
+                        }, style: { ...tf, background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 12px", fontSize: 10, cursor: "pointer", letterSpacing: 1 } }, "SAVE"),
+                    !isEmpty && React.createElement("button", { onClick: () => { if (window.confirm("Delete save in Slot " + slot + "?")) { deleteSaveSlot(slot); setShowSaveSlots(false); setTimeout(() => setShowSaveSlots(true), 10); } }, style: { background: "transparent", border: `1px solid #5a2a2a`, color: "#8a4040", padding: "6px 10px", fontSize: 10, cursor: "pointer" } }, "\uD83D\uDDD1")
+                  )
+                );
+              }),
+              saveSlotAction === "new" && React.createElement("button", { onClick: () => { setShowSaveSlots(false); clearSave(); }, style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "10px", fontSize: 11, cursor: "pointer", letterSpacing: 2, marginTop: 4 } }, "SKIP — START FRESH WITHOUT SAVING")
+            )
+          )
+        ),
+
         /* ── CTA Buttons ── */
         React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginBottom: 40 } },
           hasSave && React.createElement("button", {
@@ -5964,8 +6070,14 @@ function AethermoorRPG() {
             onMouseEnter: e => { e.target.style.background = T.accent + "44"; e.target.style.boxShadow = `0 0 20px ${T.accent}44`; },
             onMouseLeave: e => { e.target.style.background = T.accent + "22"; e.target.style.boxShadow = "none"; }
           }, "\u25B6 Continue Adventure"),
+          hasSave && React.createElement("button", {
+            onClick: () => { setSaveSlotAction("load"); setShowSaveSlots(true); },
+            style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "14px 48px", fontSize: 14, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", width: 260, transition: "all 0.2s" },
+            onMouseEnter: e => { e.target.style.background = T.accent + "22"; e.target.style.borderColor = T.accent; e.target.style.color = T.gold; },
+            onMouseLeave: e => { e.target.style.background = "transparent"; e.target.style.borderColor = T.border; e.target.style.color = T.textMuted; }
+          }, "\uD83D\uDCBE Load Save"),
           React.createElement("button", {
-            onClick: () => hasSave ? (window.confirm("Start a new game? Your current save will be lost.") && clearSave()) : setScreen("create"),
+            onClick: () => hasSave ? (setSaveSlotAction("new"), setShowSaveSlots(true)) : setScreen("create"),
             style: { ...tf, background: "transparent", border: `1px solid ${hasSave ? T.border : T.accent}`, color: hasSave ? T.textMuted : T.gold, padding: "14px 48px", fontSize: 14, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", width: 260, transition: "all 0.2s" },
             onMouseEnter: e => { e.target.style.background = T.accent + "22"; e.target.style.borderColor = T.accent; e.target.style.color = T.gold; },
             onMouseLeave: e => { e.target.style.background = "transparent"; e.target.style.borderColor = hasSave ? T.border : T.accent; e.target.style.color = hasSave ? T.textMuted : T.gold; }
@@ -6242,13 +6354,7 @@ function AethermoorRPG() {
           transition: "all 0.3s"
         }
       }, "\u{1F573}\uFE0F"), /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 9px", fontSize: 14, cursor: "pointer", borderRadius: 6 } }, "\u{1F441}"), /* @__PURE__ */ React.createElement("div", { onClick: () => setScreen("title"), style: { display: "flex", alignItems: "center", gap: 4, cursor: "pointer", padding: "4px 7px", border: `1px solid ${tokenBorder(tokens)}`, borderRadius: 6, background: tokens <= 10 ? "#e0404022" : "transparent", transition: "all 0.2s" }, title: "Buy more tokens" }, React.createElement("span", null, "\u{1FA99}"), React.createElement("span", { style: { ...tf, fontSize: 12, color: tokenColor(tokens), fontWeight: tokens <= 20 ? "bold" : "normal", animation: tokens <= 10 ? "pulse 1s infinite" : "none" } }, tokens)),
-React.createElement("button", { onClick: () => {
-  if (!player) { clearSave(); return; }
-  const choice = window.confirm("Save your current game before starting a new one?\n\nOK = save then start fresh\nCancel = start fresh without saving");
-  if (choice === null) return;
-  if (choice) { saveGame(player, worldSeed, messages, narrative, log).then(() => clearSave()); }
-  else { clearSave(); }
-}, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 8px", fontSize: 10, cursor: "pointer", borderRadius: 6, ...tf, letterSpacing: 1 } }, "NEW"))), player && /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, borderBottom: `1px solid ${T.border}`, padding: "6px 12px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement(
+React.createElement("button", { onClick: clearSave, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 8px", fontSize: 10, cursor: "pointer", borderRadius: 6, ...tf, letterSpacing: 1 } }, "NEW"))), player && /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, borderBottom: `1px solid ${T.border}`, padding: "6px 12px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: () => setMobileTab(mobileTab === "character" ? "story" : "character"),
@@ -6376,13 +6482,9 @@ React.createElement("button", { onClick: () => {
   React.createElement("span", null, "\u{1FA99}"),
   React.createElement("span", { style: { ...tf, fontSize: 12, color: tokenColor(tokens), fontWeight: tokens <= 20 ? "bold" : "normal", animation: tokens <= 10 ? "pulse 1s infinite" : "none" } }, tokens, " tokens"),
 React.createElement("button", { onClick: () => { navigator.clipboard.writeText(playerId).then(() => { const btn = document.getElementById('copy-id-btn'); if(btn){ btn.textContent='\u2713 Copied!'; setTimeout(()=>{ btn.textContent='\uD83D\uDD11 My ID'; },2000); } }); }, id: "copy-id-btn", title: "Copy your Player ID to share with the game admin for token top-ups", style: { background: "transparent", border: "1px solid #3a2e18", color: "#6a5a3a", padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "Cinzel,serif", letterSpacing: 1, marginLeft: 4, transition: "all 0.2s" } }, "\uD83D\uDD11 My ID")
-), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-  if (!player) { clearSave(); return; }
-  const choice = window.confirm("Save your current game before starting a new one?\n\nClick OK to save and start fresh.\nClick Cancel to start fresh WITHOUT saving.");
-  if (choice === null) return;
-  if (choice) { saveGame(player, worldSeed, messages, narrative, log).then(() => clearSave()); }
-  else { clearSave(); }
-}, style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "New Game"))), /* /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", overflow: "hidden", flex: 1, minHeight: 0 } },
+), /* @__PURE__ */ React.createElement("button", { onClick: () => { setSaveSlotAction("new"); setScreen("title"); setShowSaveSlots(true); }, style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "New Game"),
+/* Save button */
+React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setScreen("title"); setShowSaveSlots(true); }, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\uD83D\uDCBE Save")))), /* /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", overflow: "hidden", flex: 1, minHeight: 0 } },
             /* Story tab */
       leftTab === "story" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" } },
         /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 20, paddingBottom: 32, display: "flex", flexDirection: "column" } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: isDyslexic ? 24 : 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 15, color: T.text, whiteSpace: "pre-wrap", flex: 1, ...dyxNarr } }, narrative), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 12, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 3, paddingLeft: entry.type === "choice" ? 8 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "8px 0" } }, "The Fates are weaving your story..."))
