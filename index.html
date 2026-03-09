@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4265,6 +4266,11 @@ function AethermoorRPG() {
     }
   }, [playerId]);
 
+
+  // ── GDPR Cookie Banner ──
+  const [cookieAccepted, setCookieAccepted] = React.useState(() => !!localStorage.getItem('ae_cookie'));
+  const acceptCookies = () => { localStorage.setItem('ae_cookie', '1'); setCookieAccepted(true); };
+
   const spendToken = () => setTokens(prev => Math.max(0, prev - 1));
 
   // Buy tokens — calls backend which returns a Stripe checkout URL
@@ -5906,6 +5912,18 @@ function AethermoorRPG() {
     const hasSave = !!player;
     return React.createElement("div", { style: { ...bf, background: T.bg, minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 40px" } },
       React.createElement("style", null, `${gf} @keyframes flicker{0%,100%{opacity:1}50%{opacity:.85}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}`),
+      !cookieAccepted && React.createElement("div", {
+        style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "#1a1508", borderTop: "1px solid #3a3020", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, zIndex: 9999, fontFamily: "Crimson Text,serif" }
+      },
+        React.createElement("span", { style: { color: "#8a7a5f", fontSize: 13, flex: 1, minWidth: 200 } },
+          "Aethermoor uses localStorage to save your game progress. No tracking cookies are used. ",
+          React.createElement("a", { href: "legal.html", style: { color: "#c9a84c" } }, "Privacy Policy")
+        ),
+        React.createElement("button", {
+          onClick: acceptCookies,
+          style: { background: "#c9a84c", color: "#0d0a06", border: "none", padding: "8px 20px", fontSize: 12, fontWeight: "bold", cursor: "pointer", letterSpacing: 1 }
+        }, "Got it")
+      ),
       React.createElement("div", { style: { textAlign: "center", maxWidth: 520, width: "100%" } },
 
         /* ── Header ── */
@@ -5961,6 +5979,18 @@ function AethermoorRPG() {
       style: { ...bf, background: T.bg, minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 40px" }
     },
       React.createElement("style", null, `${gf} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}`),
+      !cookieAccepted && React.createElement("div", {
+        style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "#1a1508", borderTop: "1px solid #3a3020", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, zIndex: 9999, fontFamily: "Crimson Text,serif" }
+      },
+        React.createElement("span", { style: { color: "#8a7a5f", fontSize: 13, flex: 1, minWidth: 200 } },
+          "Aethermoor uses localStorage to save your game progress. No tracking cookies are used. ",
+          React.createElement("a", { href: "legal.html", style: { color: "#c9a84c" } }, "Privacy Policy")
+        ),
+        React.createElement("button", {
+          onClick: acceptCookies,
+          style: { background: "#c9a84c", color: "#0d0a06", border: "none", padding: "8px 20px", fontSize: 12, fontWeight: "bold", cursor: "pointer", letterSpacing: 1 }
+        }, "Got it")
+      ),
       React.createElement("div", { style: { textAlign: "center", maxWidth: 480, width: "100%" } },
 
         /* Back button */
@@ -6015,49 +6045,39 @@ function AethermoorRPG() {
         ),
 
         React.createElement("div", { style: { color: T.textFaint, fontSize: 11, marginTop: 4, fontStyle: "italic", fontFamily: "Crimson Text,serif", lineHeight: 1.8 } },
-          "Each turn uses 1 token \xB7 Tokens never expire \xB7 New players receive 50 free tokens"
+          "Each turn uses 1 token \xB7 Tokens never expire \xB7 New players receive 100 free tokens"
         )
       )
     );
   }
 
   // ── Out of tokens screen ──────────────────────────────────────────────
-  if (screen === 'out_of_tokens') return React.createElement("div", { style: { ...bf, background: "#0d0a06", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 } },
-    React.createElement("style", null, gf),
-    React.createElement("div", { style: { maxWidth: 480, width: "100%", textAlign: "center" } },
-      React.createElement("div", { style: { color: "#c9a84c", fontSize: 32, marginBottom: 8 } }, "🪙"),
-      React.createElement("h2", { style: { ...tf, color: "#c9a84c", fontSize: 24, letterSpacing: 3, marginBottom: 12 } }, "YOUR TOKENS ARE SPENT"),
-      React.createElement("p", { style: { color: "#8a7a5f", fontFamily: "Crimson Text,serif", fontSize: 15, marginBottom: 28, lineHeight: 1.6 } },
-        "The narrator's voice fades to silence. Your adventure awaits — purchase more tokens to continue your legend."
-      ),
-      React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, alignItems: "center" } },
-        [
-          { pkg: "starter",    label: "Starter Pack",    detail: "100 tokens — £1.00" },
-          { pkg: "adventurer", label: "Adventurer Pack", detail: "300 tokens — £2.50" },
-          { pkg: "hero",       label: "Hero Pack",       detail: "750 tokens — £5.00" },
-          { pkg: "legend",     label: "Legend Pack",     detail: "1,500 tokens — £9.99" },
-        ].map(({ pkg, label, detail }) =>
-          React.createElement("button", {
-            key: pkg,
-            onClick: () => buyTokens(pkg),
-            style: { background: "#c9a84c", color: "#0d0a06", padding: "10px 28px", width: 260,
-                     fontFamily: "Georgia,serif", fontSize: 13, cursor: "pointer",
-                     borderRadius: 3, fontWeight: "bold", border: "none",
-                     letterSpacing: "0.05em", display: "flex", justifyContent: "space-between" }
-          },
-            React.createElement("span", null, label),
-            React.createElement("span", { style: { fontSize: 11, opacity: 0.8 } }, detail)
-          )
-        )
-      ),
-      React.createElement("button", {
-        onClick: () => setScreen("title"),
-        style: { background: "transparent", border: "1px solid #5c4a33", color: "#8a7a5f",
-                 padding: "8px 20px", marginTop: 20, cursor: "pointer", fontSize: 12,
-                 fontFamily: "Georgia,serif", borderRadius: 3 }
-      }, "← Return to Title")
-    )
-  );
+  if (screen === 'out_of_tokens') {
+    return React.createElement("div", { style: { ...bf, background: "#0d0a06", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 } },
+      React.createElement("style", null, gf),
+      React.createElement("div", { style: { maxWidth: 480, width: "100%", textAlign: "center" } },
+        React.createElement("div", { style: { color: "#c9a84c", fontSize: 40, marginBottom: 12 } }, "\u{1FA99}"),
+        React.createElement("h2", { style: { ...tf, color: "#c9a84c", fontSize: 24, letterSpacing: 3, marginBottom: 16 } }, "YOUR TOKENS ARE SPENT"),
+        React.createElement("p", { style: { color: "#8a7a5f", fontFamily: "Crimson Text,serif", fontSize: 15, marginBottom: 32, lineHeight: 1.7 } },
+          "The narrator's voice fades to silence. Your adventure awaits — purchase more tokens to continue your legend."
+        ),
+        React.createElement("button", {
+          onClick: () => setScreen("tokens"),
+          style: { ...tf, background: "#c9a84c", color: "#0d0a06", padding: "14px 48px", fontSize: 13, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", border: "none", fontWeight: "bold", marginBottom: 16, width: 260, transition: "all 0.2s" },
+          onMouseEnter: e => { e.currentTarget.style.background = "#e0bc6a"; },
+          onMouseLeave: e => { e.currentTarget.style.background = "#c9a84c"; }
+        }, "\u{1FA99} Buy Tokens"),
+        React.createElement("button", {
+          onClick: () => setScreen("title"),
+          style: { ...tf, background: "transparent", border: "1px solid #3a3020", color: "#8a7a5f", padding: "10px 48px", fontSize: 11, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", width: 260, transition: "all 0.2s" },
+          onMouseEnter: e => { e.currentTarget.style.borderColor = "#c9a84c"; e.currentTarget.style.color = "#c9a84c"; },
+          onMouseLeave: e => { e.currentTarget.style.borderColor = "#3a3020"; e.currentTarget.style.color = "#8a7a5f"; }
+        }, "\u2190 Return to Title")
+      )
+    );
+  }
+
+  
   if (screen === "create") return /* @__PURE__ */ React.createElement("div", { style: { ...bf, background: T.bg, minHeight: "100vh", padding: 24, display: "flex", flexDirection: "column", alignItems: "center" } }, /* @__PURE__ */ React.createElement("style", null, gf), /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, width: "100%" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: "none", color: T.textMuted, cursor: "pointer", fontSize: 13, marginBottom: 18, fontFamily: "Crimson Text,serif", padding: 0 } }, "\u2190 Vision Settings / Title"), /* @__PURE__ */ React.createElement("h2", { style: { ...tf, color: T.gold, fontSize: 28, letterSpacing: 3, textAlign: "center", marginBottom: 8 } }, "FORGE YOUR HERO"), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textMuted, marginBottom: legacyGravestones.length > 0 ? 16 : 32, fontSize: 13, letterSpacing: 1 } }, "Choose wisely. Your legend begins here."), legacyGravestones.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: "12px 16px", marginBottom: 24 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.textMuted, fontSize: 10, letterSpacing: 2, marginBottom: 8, textAlign: "center" } }, "THOSE WHO CAME BEFORE"), legacyGravestones.slice(-3).map((g, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { borderTop: i > 0 ? `1px solid ${T.border}` : "none", paddingTop: i > 0 ? 8 : 0, marginTop: i > 0 ? 8 : 0 } }, /* @__PURE__ */ React.createElement("div", { style: { color: T.text, fontSize: 12 } }, g.name, " the ", g.class, " \xB7 Lv.", g.level), /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 11, fontStyle: "italic", fontFamily: "Crimson Text,serif" } }, g.epitaph)))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 26 } }, /* @__PURE__ */ React.createElement("label", { style: { ...tf, color: T.accent, fontSize: 12, letterSpacing: 2, display: "block", marginBottom: 8 } }, "YOUR NAME"), /* @__PURE__ */ React.createElement(
     "input",
     {

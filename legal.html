@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal — Aethermoor</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0a06; --panel: #13100a; --border: #2e2515;
+      --gold: #c9a84c; --accent: #8b5e1a; --text: #d4c5a0;
+      --muted: #8a7a5f; --faint: #4a3f2f;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Crimson Text', Georgia, serif; font-size: 17px; line-height: 1.8; min-height: 100vh; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: radial-gradient(ellipse at 20% 50%, rgba(139,94,26,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(201,168,76,0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+    .wrapper { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 60px 24px 80px; }
+    .site-header { text-align: center; margin-bottom: 56px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+    .site-header .eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 6px; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; }
+    .site-header h1 { font-family: 'Cinzel', serif; font-size: 38px; color: var(--gold); letter-spacing: 3px; font-weight: 600; margin-bottom: 6px; }
+    .site-header .subtitle { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 4px; color: var(--muted); }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; color: var(--muted); text-decoration: none; text-transform: uppercase; margin-bottom: 48px; transition: color 0.2s; }
+    .back-link:hover { color: var(--gold); }
+    .tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 40px; }
+    .tab-btn { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); background: transparent; border: none; border-bottom: 2px solid transparent; padding: 12px 20px; cursor: pointer; transition: all 0.2s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .section { margin-bottom: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; margin-bottom: 0; }
+    h2 { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 16px; }
+    p { margin-bottom: 14px; color: var(--text); }
+    p:last-child { margin-bottom: 0; }
+    ul { list-style: none; margin-bottom: 14px; padding-left: 0; }
+    ul li { color: var(--text); padding: 4px 0 4px 20px; position: relative; }
+    ul li::before { content: '—'; position: absolute; left: 0; color: var(--accent); }
+    .highlight-box { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 16px 20px; margin: 20px 0; font-style: italic; color: var(--muted); font-size: 15px; line-height: 1.7; }
+    .region-box { background: var(--panel); border: 1px solid var(--border); padding: 20px; margin: 16px 0; }
+    .region-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; margin-bottom: 10px; display: block; }
+    a { color: var(--gold); }
+    a:hover { color: var(--text); }
+    .last-updated { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; color: var(--faint); text-transform: uppercase; margin-bottom: 32px; }
+    strong { color: var(--text); }
+    footer { text-align: center; margin-top: 60px; padding-top: 32px; border-top: 1px solid var(--border); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; color: var(--faint); }
+    @media (max-width: 500px) { .site-header h1 { font-size: 28px; } .tab-btn { padding: 10px 12px; font-size: 10px; } }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <a href="index.html" class="back-link">← Return to Aethermoor</a>
+
+  <header class="site-header">
+    <div class="eyebrow">The Chronicles of</div>
+    <h1>AETHERMOOR</h1>
+    <div class="subtitle">Legal Documents</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('tos',this)">Terms of Service</button>
+    <button class="tab-btn" onclick="showTab('privacy',this)">Privacy Policy</button>
+    <button class="tab-btn" onclick="showTab('refunds',this)">Refund Policy</button>
+  </div>
+
+  <!-- TERMS OF SERVICE -->
+  <div id="tab-tos" class="tab-panel active">
+    <p class="last-updated">Last updated: March 2026</p>
+
+    <div class="section">
+      <h2>1. Acceptance of Terms</h2>
+      <p>By accessing or playing Aethermoor ("the Game", "the Service"), you agree to these Terms of Service. If you do not agree, please do not use the Service. These Terms apply to all users worldwide.</p>
+      <p>Aethermoor is operated by Knoodlepot Games ("we", "us", "our"), based in Birmingham, England, United Kingdom.</p>
+    </div>
+
+    <div class="section">
+      <h2>2. Age Requirement</h2>
+      <div class="highlight-box">You must be at least 18 years old to use Aethermoor. By using this Service you confirm you are 18 or over.</div>
+      <p><strong>United States:</strong> By using this Service you confirm you are at least 18 years old. We do not knowingly collect personal data from anyone under 18.</p>
+      <p><strong>European Union:</strong> Users in EU member states must be at least 18 years old to use this Service.</p>
+      <p>If we become aware that a user is under 18, we will promptly delete their account and associated data.</p>
+    </div>
+
+    <div class="section">
+      <h2>3. The Service</h2>
+      <p>Aethermoor is a browser-based, AI-powered text adventure game. Story outcomes and events are generated dynamically by an AI narrative engine and may vary between sessions.</p>
+      <p>We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice.</p>
+    </div>
+
+    <div class="section">
+      <h2>4. Tokens</h2>
+      <p>Each action in the game consumes one token.</p>
+      <ul>
+        <li>New players receive 100 free tokens upon registration</li>
+        <li>Additional tokens may be purchased via Stripe</li>
+        <li>Tokens are non-transferable between accounts</li>
+        <li>Tokens do not expire while the Service is active</li>
+        <li>Tokens have no cash value and cannot be exchanged for money</li>
+      </ul>
+      <p>We reserve the right to modify token pricing or consumption rate with reasonable advance notice to active players.</p>
+    </div>
+
+    <div class="section">
+      <h2>5. Payments</h2>
+      <p>All payments are processed securely by <a href="https://stripe.com" target="_blank">Stripe, Inc.</a> We do not store your payment card details. All transactions are charged in Pounds Sterling (GBP). Your bank may apply currency conversion fees — these are outside our control.</p>
+    </div>
+
+    <div class="section">
+      <h2>6. Acceptable Use</h2>
+      <p>You agree not to:</p>
+      <ul>
+        <li>Exploit, reverse-engineer, or manipulate the game's AI systems</li>
+        <li>Use automated tools or bots to interact with the game</li>
+        <li>Obtain tokens fraudulently or through unauthorised means</li>
+        <li>Use the Service for any unlawful purpose under the laws of your country</li>
+        <li>Attempt to circumvent security measures or access systems you are not authorised to use</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>7. Intellectual Property</h2>
+      <p>All content in Aethermoor — including text, graphics, game systems, world design, and code — is owned by or licensed to Knoodlepot Games. You may not reproduce or distribute any part of the Service without our written permission.</p>
+    </div>
+
+    <div class="section">
+      <h2>8. Disclaimer of Warranties</h2>
+      <p>Aethermoor is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free availability. Some jurisdictions do not allow exclusion of implied warranties — in those cases this exclusion applies to the fullest extent permitted by local law.</p>
+      <p><strong>Australian users:</strong> Our goods and services come with guarantees that cannot be excluded under the Australian Consumer Law.</p>
+    </div>
+
+    <div class="section">
+      <h2>9. Limitation of Liability</h2>
+      <p>To the fullest extent permitted by applicable law, our total liability to you for any claim shall not exceed the amount you paid to us in the 12 months preceding the claim.</p>
+      <p><strong>EU/EEA users:</strong> Nothing in these Terms affects your statutory rights under EU consumer protection law.</p>
+    </div>
+
+    <div class="section">
+      <h2>10. Governing Law &amp; Disputes</h2>
+      <p>These Terms are governed by the laws of England and Wales. However, if you are a consumer in another country, you also retain the benefit of any mandatory protections under the law of your country of residence.</p>
+      <p>We encourage you to contact us first to resolve any dispute informally. Failing that, disputes are subject to the non-exclusive jurisdiction of the courts of England and Wales — meaning you may also bring a claim in your own country's courts if required by local law.</p>
+      <p><strong>EU users:</strong> You may use the EU Online Dispute Resolution platform at <a href="https://ec.europa.eu/consumers/odr" target="_blank">ec.europa.eu/consumers/odr</a>.</p>
+    </div>
+
+    <div class="section">
+      <h2>11. Contact</h2>
+      <p>Questions about these Terms: <a href="mailto:support@knoodlepot.com">support@knoodlepot.com</a></p>
+    </div>
+  </div>
+
+  <!-- PRIVACY POLICY -->
+  <div id="tab-privacy" class="tab-panel">
+    <p class="last-updated">Last updated: March 2026</p>
+
+    <div class="section">
+      <h2>1. Who We Are</h2>
+      <p>Knoodlepot Games, Birmingham, England, United Kingdom — data controller for the purposes of applicable data protection law.</p>
+      <p>Contact: <a href="mailto:support@knoodlepot.com">support@knoodlepot.com</a></p>
+    </div>
+
+    <div class="section">
+      <h2>2. Data We Collect</h2>
+      <p><strong>Data you provide:</strong></p>
+      <ul>
+        <li>Your chosen player name</li>
+        <li>Payment information — processed and stored by Stripe, not by us</li>
+      </ul>
+      <p><strong>Data generated automatically:</strong></p>
+      <ul>
+        <li>A randomly generated player ID (created in your browser)</li>
+        <li>Token purchase records (package, tokens awarded, transaction ID)</li>
+        <li>Basic server logs (request timestamps, error logs) — retained 90 days</li>
+      </ul>
+      <p><strong>Data stored only on your device:</strong></p>
+      <ul>
+        <li>Your game save (character, story progress, inventory)</li>
+        <li>Your token balance</li>
+        <li>Your cookie consent preference</li>
+      </ul>
+      <div class="highlight-box">We do not collect your email address, real name, or location unless you voluntarily contact support.</div>
+    </div>
+
+    <div class="section">
+      <h2>3. How We Use Your Data</h2>
+      <ul>
+        <li>To track your token balance and process purchases</li>
+        <li>To maintain and improve the Service</li>
+        <li>To investigate fraud or technical issues</li>
+        <li>To comply with legal obligations</li>
+      </ul>
+      <p>We do not use your data for advertising. We do not sell or share your personal data with third parties for their marketing purposes.</p>
+    </div>
+
+    <div class="section">
+      <h2>4. Legal Bases for Processing</h2>
+      <ul>
+        <li><strong>Contract performance</strong> — to deliver tokens you have purchased</li>
+        <li><strong>Legitimate interests</strong> — to prevent fraud and maintain service security</li>
+        <li><strong>Legal obligation</strong> — to retain purchase records for accounting and tax compliance</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>5. Third-Party Services</h2>
+      <p><strong>Stripe</strong> — Payment processing. Privacy policy: <a href="https://stripe.com/privacy" target="_blank">stripe.com/privacy</a></p>
+      <p><strong>Anthropic Claude API</strong> — AI narrative engine. Your in-game actions are sent to Anthropic's API. Privacy policy: <a href="https://www.anthropic.com/privacy" target="_blank">anthropic.com/privacy</a></p>
+      <p><strong>Railway</strong> — Backend hosting. Privacy policy: <a href="https://railway.app/legal/privacy" target="_blank">railway.app/legal/privacy</a></p>
+      <p><strong>Google Fonts</strong> — Typography. Google may log your IP address per their privacy policy.</p>
+    </div>
+
+    <div class="section">
+      <h2>6. International Data Transfers</h2>
+      <p>Our third-party providers (Stripe, Anthropic, Railway) may process data in the United States or other countries. Where data is transferred outside the UK or EEA, we ensure appropriate safeguards are in place, including Standard Contractual Clauses where applicable.</p>
+    </div>
+
+    <div class="section">
+      <h2>7. Data Retention</h2>
+      <p>Token purchase records are retained for 7 years for legal and accounting purposes. Server logs are deleted after 90 days. You may request deletion of your data at any time.</p>
+    </div>
+
+    <div class="section">
+      <h2>8. Cookies &amp; Local Storage</h2>
+      <p>Aethermoor does not use tracking or advertising cookies. We use browser localStorage solely to store your game save and preferences on your own device. This data never leaves your device except for token balance checks and purchases.</p>
+    </div>
+
+    <div class="section">
+      <h2>9. Your Rights</h2>
+      <p>To exercise any right below, email <a href="mailto:support@knoodlepot.com">support@knoodlepot.com</a>. We will respond within 30 days.</p>
+
+      <div class="region-box">
+        <span class="region-label">🇬🇧 UK &amp; 🇪🇺 EU Residents — UK GDPR / EU GDPR</span>
+        <p style="margin-bottom:10px;">You have rights of access, rectification, erasure, restriction, portability, and objection. You may lodge a complaint with your supervisory authority:</p>
+        <ul>
+          <li>UK: Information Commissioner's Office — <a href="https://ico.org.uk" target="_blank">ico.org.uk</a></li>
+          <li>EU: Your national data protection authority — <a href="https://edpb.europa.eu/about-edpb/about-edpb/members_en" target="_blank">find yours here</a></li>
+        </ul>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🇺🇸 California Residents — CCPA / CPRA</span>
+        <p style="margin-bottom:10px;">You have the right to know what personal information we collect, request deletion, and opt out of the sale of your data. <strong>We do not sell your personal information.</strong> You may exercise your rights without discrimination.</p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🇦🇺 Australian Residents — Privacy Act 1988</span>
+        <p style="margin-bottom:0;">You have the right to access and correct your personal information. Complaints may be lodged with the Office of the Australian Information Commissioner: <a href="https://www.oaic.gov.au" target="_blank">oaic.gov.au</a></p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🇨🇦 Canadian Residents — PIPEDA</span>
+        <p style="margin-bottom:0;">You have the right to access and correct your personal information. Complaints may be directed to the Office of the Privacy Commissioner of Canada: <a href="https://www.priv.gc.ca" target="_blank">priv.gc.ca</a></p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🌍 All Other Regions</span>
+        <p style="margin-bottom:0;">We respect your data rights under the applicable laws of your country. Contact us at <a href="mailto:support@knoodlepot.com">support@knoodlepot.com</a> to exercise any data rights available to you.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>10. Age Restriction &amp; Minors</h2>
+      <p>Our Service is intended for users aged 18 and over. We do not knowingly collect personal information from anyone under 18. If you believe someone under 18 has provided us with personal information, contact <a href="mailto:support@knoodlepot.com">support@knoodlepot.com</a> and we will promptly delete it.</p>
+    </div>
+
+    <div class="section">
+      <h2>11. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time. Material changes will be notified where reasonably practicable.</p>
+    </div>
+  </div>
+
+  <!-- REFUND POLICY -->
+  <div id="tab-refunds" class="tab-panel">
+    <p class="last-updated">Last updated: March 2026</p>
+
+    <div class="section">
+      <h2>Overview</h2>
+      <p>Aethermoor tokens are digital goods delivered immediately upon purchase. Your statutory rights under your local consumer protection laws are not affected by this policy.</p>
+      <div class="highlight-box">Tokens are non-refundable once purchased and credited to your account, except in the circumstances described below or where required by the laws of your country.</div>
+    </div>
+
+    <div class="section">
+      <h2>When Refunds Are Available</h2>
+      <ul>
+        <li>Tokens were purchased but never credited due to a technical fault on our part</li>
+        <li>A duplicate charge occurred due to a payment processing error</li>
+        <li>You were charged but did not authorise the transaction (contact your bank first)</li>
+        <li>The Service is permanently discontinued within 12 months of your purchase (pro-rata refund for unused tokens)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Regional Consumer Rights</h2>
+
+      <div class="region-box">
+        <span class="region-label">🇬🇧 United Kingdom</span>
+        <p style="margin-bottom:0;">Under the Consumer Contracts Regulations 2013, you have a 14-day cooling-off period for digital purchases. By completing your purchase you expressly consent to immediate delivery and acknowledge that you waive your right to cancel. Your rights regarding faulty or misdescribed goods are not affected.</p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🇪🇺 European Union</span>
+        <p style="margin-bottom:0;">Under EU Directive 2011/83/EU, consumers have a 14-day right of withdrawal for digital content. By completing your purchase you expressly request immediate delivery and acknowledge that you waive your right of withdrawal. Your rights regarding defective digital content under Directive 2019/770 are not affected.</p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🇦🇺 Australia</span>
+        <p style="margin-bottom:0;">Our goods and services come with guarantees that cannot be excluded under the Australian Consumer Law. If the Service fails to be of acceptable quality, you may be entitled to a remedy. Please contact us to discuss.</p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🇺🇸 United States</span>
+        <p style="margin-bottom:0;">Refund rights for digital goods vary by state. We will consider requests on a case-by-case basis consistent with applicable state consumer protection laws. California residents may have additional rights under the CLRA (Civil Code § 1770).</p>
+      </div>
+
+      <div class="region-box">
+        <span class="region-label">🌍 All Other Countries</span>
+        <p style="margin-bottom:0;">Nothing in this policy limits any rights you may have under the mandatory consumer protection laws of your country. If local law grants you a refund right not described here, please contact us.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>How to Request a Refund</h2>
+      <p>Email <a href="mailto:support@knoodlepot.com">support@knoodlepot.com</a> within 30 days of purchase, including your player name or ID, the date and amount of the transaction, and a description of the issue. We aim to respond within 5 business days.</p>
+    </div>
+
+    <div class="section">
+      <h2>Chargebacks</h2>
+      <p>If you initiate a chargeback without first contacting us, we reserve the right to suspend your account pending investigation. We encourage you to reach out directly first — most issues can be resolved quickly.</p>
+    </div>
+
+    <div class="section">
+      <h2>Dispute Resolution</h2>
+      <p><strong>EU users:</strong> You may use the EU ODR platform at <a href="https://ec.europa.eu/consumers/odr" target="_blank">ec.europa.eu/consumers/odr</a>.</p>
+      <p><strong>UK users:</strong> You may contact the Citizens Advice consumer helpline.</p>
+      <p><strong>All users:</strong> We commit to making a good-faith effort to resolve any dispute directly.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 Knoodlepot Games · Birmingham, England, UK</p>
+    <p style="margin-top: 8px;">⚔ The Chronicles of Aethermoor</p>
+  </footer>
+
+</div>
+<script>
+  function showTab(id, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>
