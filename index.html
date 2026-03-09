@@ -67,7 +67,6 @@ async function storageDelete(key) {
   return { key, deleted: true };
 }
 
-// ── Save Slot System (3 slots) ─────────────────────────────────────────────
 function getSaveSlotKey(slot) { return "aethermoor_save_slot_" + slot; }
 function readSaveSlot(slot) {
   try { const raw = localStorage.getItem(getSaveSlotKey(slot)); return raw ? JSON.parse(raw) : null; }
@@ -979,6 +978,22 @@ function rollCombatLoot(playerLevel, narrativeText) {
   if (!pool || pool.length === 0) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 }
+// Items that can never be dropped (faction gifts, rank gear, quest tokens)
+const PROTECTED_ITEMS = new Set([
+  // Faction join gifts
+  "Iron Conclave Signet","Shadowmere Calling Card","Ember Initiate's Focus",
+  "Silver Hand Medallion","Thornwood Seedling","Compact Letter of Credit",
+  "Crown's Watch Warrant Card","Forgotten's Mark","Academy Research Pass","Sea Wolves Token",
+  // Faction rank gear
+  "Champion's Pauldrons","War Helm","Shadow Boots","Shadow Hood",
+  "Ember Focus","Ember Robes","Sigil of the Hand","Vestments of Light",
+  "Root Boots","Antler Crown","Gold-Threaded Boots","Merchant's Ring",
+  "Warden's Badge","Royal Armour","Broken Crown","Ragged Cloak",
+  "Scholar's Ring","Robes of the Academy","Navigator's Compass","Wolf Coat",
+  // Other special items
+  "Shadowmere Cloak"
+]);
+
 const FACTION_RANK_GEAR = {
   iron_conclave: { 3: "Champion's Pauldrons", 4: "War Helm" },
   shadowmere_guild: { 3: "Shadow Boots", 4: "Shadow Hood" },
@@ -3365,7 +3380,11 @@ function InventoryScreen({ player, onEquip, onUnequip, onUse, onDrop, onClose, T
         style: { ...btnBase, background: "#30803033", color: "#80d080", border: "1px solid #30803044" }
       },
       "\u2726 USE"
-    ), !isEquipped && confirmDrop === itemName ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    ), !isEquipped && (PROTECTED_ITEMS.has(itemName) ? /* @__PURE__ */ React.createElement(
+      "span",
+      { style: { ...btnBase, background: "transparent", color: T.textFaint, border: `1px solid ${T.border}22`, cursor: "default", opacity: 0.5 }, title: "Faction keepsake — cannot be dropped" },
+      "\u{1F512} KEEP"
+    ) : confirmDrop === itemName ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -3382,14 +3401,14 @@ function InventoryScreen({ player, onEquip, onUnequip, onUse, onDrop, onClose, T
         style: { ...btnBase, background: T.border, color: T.textMuted, border: `1px solid ${T.border}` }
       },
       "\u2717"
-    )) : !isEquipped && /* @__PURE__ */ React.createElement(
+    )) : /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmDrop(itemName),
         style: { ...btnBase, background: "transparent", color: T.textFaint, border: `1px solid ${T.border}44` }
       },
       "\u{1F5D1} DROP"
-    ));
+    )));
   }
   return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Crimson Text',Georgia,serif", color: T.text, position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 640, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: `0 8px 40px #00000099` } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "\u{1F392} EQUIPMENT & INVENTORY"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, inventory.length, " item", inventory.length !== 1 ? "s" : "", " in pack \xB7 \u{1FA99} ", player.gold, "g")), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 10, letterSpacing: 2, marginBottom: 10 } }, "EQUIPPED"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 } }, Object.entries(EQUIP_SLOTS).map(([slot, slotData]) => {
     const item = equipped[slot];
@@ -4489,7 +4508,7 @@ function AethermoorRPG() {
     return m ? m[1] : null;
   }
   function extractNpcTag(text) {
-    const m = text.match(/\{"npc"\s*:\s*(\{[\s\S]*?\})\}/);
+    const m = text.match(/\{"npc"\s*:\s*(\{[^}]+\})\}/);
     if (!m) return null;
     try {
       return JSON.parse(m[1]);
@@ -4498,7 +4517,7 @@ function AethermoorRPG() {
     }
   }
   function extractNpcUpdateTag(text) {
-    const m = text.match(/\{"npcUpdate"\s*:\s*(\{[\s\S]*?\})\}/);
+    const m = text.match(/\{"npcUpdate"\s*:\s*(\{[^}]+\})\}/);
     if (!m) return null;
     try {
       return JSON.parse(m[1]);
@@ -4531,8 +4550,8 @@ function AethermoorRPG() {
   }
   function stripContextTag(text) {
     let t = text.replace(/\{"context"\s*:\s*"\w+"\}/g, "");
-    t = t.replace(/\{"npc"\s*:\s*\{[\s\S]*?\}\}/g, "");
-    t = t.replace(/\{"npcUpdate"\s*:\s*\{[\s\S]*?\}\}/g, "");
+    t = t.replace(/\{"npc"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"npcUpdate"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
     t = t.replace(/```[a-z]*\s*\{"context"\s*:\s*"\w+"\}\s*```/g, "");
@@ -5905,6 +5924,10 @@ function AethermoorRPG() {
   }
   function handleDropItem(itemName) {
     if (!player) return;
+    if (PROTECTED_ITEMS.has(itemName)) {
+      queueLevelUpMsg(`\u{1F512} ${itemName} cannot be dropped — it is a faction keepsake.`, 4000);
+      return;
+    }
     const inv = [...player.inventory || []];
     const idx = inv.indexOf(itemName);
     if (idx === -1) return;
