@@ -5933,40 +5933,87 @@ function AethermoorRPG() {
           }, hasSave ? "New Game" : "Begin Your Legend")
         ),
 
-        /* ── Token Shop ── */
-        React.createElement("div", { style: { borderTop: `1px solid ${T.border}`, paddingTop: 28 } },
-          paymentSuccess && React.createElement("div", { style: { background: "#2a5c2a", border: "1px solid #4a9c4a", color: "#90d890", padding: "10px 16px", marginBottom: 16, fontSize: 13, borderRadius: 3 } },
-            "\u2705 Payment successful! Your tokens have been added."
-          ),
-          React.createElement("div", { style: { ...tf, color: T.textMuted, fontSize: 10, letterSpacing: 3, marginBottom: 14, textAlign: "center" } }, "\u{1FA99} AETHERMOOR TOKENS"),
-          React.createElement("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 16 } },
-            React.createElement("div", { style: { color: T.gold, fontSize: 15, ...tf } }, tokens),
-            React.createElement("div", { style: { color: T.textMuted, fontSize: 12 } }, "tokens remaining"),
-            tokens <= 50 && React.createElement("div", { style: { color: tokenColor(tokens), fontSize: 11, fontWeight: "bold", animation: tokens <= 10 ? "pulse 1s infinite" : "none" } }, tokens <= 10 ? "\u26A0\uFE0F Critical!" : tokens <= 20 ? "\u26A0\uFE0F Low!" : "\u26A0\uFE0F Running low!")
-          ),
-          React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, maxWidth: 420, margin: "0 auto" } },
-            [
-              { pkg: "starter",    label: "Starter",    sub: "100 tokens", price: "£1.00" },
-              { pkg: "adventurer", label: "Adventurer", sub: "300 tokens", price: "£2.50" },
-              { pkg: "hero",       label: "Hero",       sub: "750 tokens", price: "£5.00" },
-              { pkg: "legend",     label: "Legend",     sub: "1,500 tokens", price: "£9.99" },
-            ].map(({ pkg, label, sub, price }) =>
-              React.createElement("button", {
-                key: pkg,
-                onClick: () => buyTokens(pkg),
-                style: { background: T.panel, border: `1px solid ${T.border}`, color: T.text, padding: "12px 10px", cursor: "pointer", textAlign: "center", transition: "all 0.2s", fontFamily: "Crimson Text,serif" },
-                onMouseEnter: e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.background = T.selectedBg; },
-                onMouseLeave: e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.panel; }
-              },
-                React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 12, letterSpacing: 1, marginBottom: 3 } }, label),
-                React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginBottom: 4 } }, sub),
-                React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 13, fontWeight: "bold" } }, price)
-              )
-            )
-          ),
-          React.createElement("div", { style: { color: T.textFaint, fontSize: 10, marginTop: 12, fontStyle: "italic", fontFamily: "Crimson Text,serif" } },
-            "Each turn uses 1 token \xB7 Tokens never expire \xB7 New players receive 50 free tokens"
+        /* ── Tokens link ── */
+        React.createElement("div", { style: { borderTop: `1px solid ${T.border}`, paddingTop: 20, textAlign: "center" } },
+          React.createElement("button", {
+            onClick: () => setScreen("tokens"),
+            style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "10px 28px", fontSize: 11, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", transition: "all 0.2s" },
+            onMouseEnter: e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.color = T.gold; },
+            onMouseLeave: e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textMuted; }
+          },
+            React.createElement("span", { style: { marginRight: 6 } }, "\u{1FA99}"),
+            "Aethermoor Tokens",
+            React.createElement("span", { style: { marginLeft: 8, color: T.gold, fontSize: 11, opacity: 0.8 } }, "(", tokens, ")"),
+            tokens <= 20 && React.createElement("span", {
+              style: { marginLeft: 6, color: tokenColor(tokens), fontSize: 10, animation: tokens <= 10 ? "pulse 1s infinite" : "none" }
+            }, tokens <= 10 ? "\u26A0\uFE0F Critical!" : "\u26A0\uFE0F Running low!")
           )
+        )
+      )
+    );
+  }
+
+
+
+  // ── Token Shop screen ────────────────────────────────────────────
+  if (screen === "tokens") {
+    return React.createElement("div", {
+      style: { ...bf, background: T.bg, minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "48px 16px 40px" }
+    },
+      React.createElement("style", null, `${gf} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}`),
+      React.createElement("div", { style: { textAlign: "center", maxWidth: 480, width: "100%" } },
+
+        /* Back button */
+        React.createElement("button", {
+          onClick: () => setScreen("title"),
+          style: { ...tf, background: "transparent", border: "none", color: T.textMuted, fontSize: 11, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase", marginBottom: 32, display: "flex", alignItems: "center", gap: 6 },
+          onMouseEnter: e => e.currentTarget.style.color = T.gold,
+          onMouseLeave: e => e.currentTarget.style.color = T.textMuted
+        }, "\u2190  Back to Title"),
+
+        /* Header */
+        React.createElement("div", { style: { fontSize: 11, color: T.accent, letterSpacing: 6, textTransform: "uppercase", marginBottom: 12, ...tf } }, "The Chronicles of"),
+        React.createElement("h1", { style: { ...tf, fontSize: 36, color: T.gold, margin: "0 0 6px", letterSpacing: 4 } }, "AETHERMOOR"),
+        React.createElement("div", { style: { width: 120, height: 1, background: `linear-gradient(to right,transparent,${T.accent},transparent)`, margin: "0 auto 28px" } }),
+
+        /* Token balance */
+        React.createElement("div", { style: { ...tf, color: T.textMuted, fontSize: 10, letterSpacing: 3, marginBottom: 14, textAlign: "center" } }, "\u{1FA99} AETHERMOOR TOKENS"),
+        React.createElement("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 24 } },
+          React.createElement("div", { style: { color: T.gold, fontSize: 22, ...tf } }, tokens),
+          React.createElement("div", { style: { color: T.textMuted, fontSize: 13 } }, "tokens remaining"),
+          tokens <= 20 && React.createElement("div", {
+            style: { color: tokenColor(tokens), fontSize: 12, fontWeight: "bold", animation: tokens <= 10 ? "pulse 1s infinite" : "none" }
+          }, tokens <= 10 ? "\u26A0\uFE0F Critical!" : tokens <= 20 ? "\u26A0\uFE0F Low!" : "\u26A0\uFE0F Running low!")
+        ),
+
+        paymentSuccess && React.createElement("div", {
+          style: { background: "#2a5c2a", border: "1px solid #4a9c4a", color: "#90d890", padding: "10px 16px", marginBottom: 20, fontSize: 13, borderRadius: 3 }
+        }, "\u2705 Payment successful! Your tokens have been added."),
+
+        /* Package grid */
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 420, margin: "0 auto 20px" } },
+          [
+            { pkg: "starter",    label: "Starter",    sub: "100 tokens", price: "\xA31.00" },
+            { pkg: "adventurer", label: "Adventurer", sub: "300 tokens", price: "\xA32.50" },
+            { pkg: "hero",       label: "Hero",       sub: "750 tokens", price: "\xA35.00" },
+            { pkg: "legend",     label: "Legend",     sub: "1,500 tokens", price: "\xA39.99" },
+          ].map(({ pkg, label, sub, price }) =>
+            React.createElement("button", {
+              key: pkg,
+              onClick: () => buyTokens(pkg),
+              style: { background: T.panel, border: `1px solid ${T.border}`, color: T.text, padding: "16px 12px", cursor: "pointer", textAlign: "center", transition: "all 0.2s", fontFamily: "Crimson Text,serif" },
+              onMouseEnter: e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.background = T.selectedBg; },
+              onMouseLeave: e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.panel; }
+            },
+              React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 13, letterSpacing: 1, marginBottom: 4 } }, label),
+              React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginBottom: 6 } }, sub),
+              React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 15, fontWeight: "bold" } }, price)
+            )
+          )
+        ),
+
+        React.createElement("div", { style: { color: T.textFaint, fontSize: 11, marginTop: 4, fontStyle: "italic", fontFamily: "Crimson Text,serif", lineHeight: 1.8 } },
+          "Each turn uses 1 token \xB7 Tokens never expire \xB7 New players receive 50 free tokens"
         )
       )
     );
