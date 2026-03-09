@@ -978,19 +978,24 @@ function rollCombatLoot(playerLevel, narrativeText) {
   if (!pool || pool.length === 0) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 }
-// Items that can never be dropped (faction gifts, rank gear, quest tokens)
-const PROTECTED_ITEMS = new Set([
-  // Faction join gifts
+// Items that are concealed from NPCs (hidden in lining, pockets, etc.)
+const CONCEALED_ITEMS = new Set([
   "Iron Conclave Signet","Shadowmere Calling Card","Ember Initiate's Focus",
   "Silver Hand Medallion","Thornwood Seedling","Compact Letter of Credit",
   "Crown's Watch Warrant Card","Forgotten's Mark","Academy Research Pass","Sea Wolves Token",
-  // Faction rank gear
+  "Shadowmere Cloak"
+]);
+
+// Items that can never be dropped (faction gifts, rank gear, quest tokens)
+const PROTECTED_ITEMS = new Set([
+  "Iron Conclave Signet","Shadowmere Calling Card","Ember Initiate's Focus",
+  "Silver Hand Medallion","Thornwood Seedling","Compact Letter of Credit",
+  "Crown's Watch Warrant Card","Forgotten's Mark","Academy Research Pass","Sea Wolves Token",
   "Champion's Pauldrons","War Helm","Shadow Boots","Shadow Hood",
   "Ember Focus","Ember Robes","Sigil of the Hand","Vestments of Light",
   "Root Boots","Antler Crown","Gold-Threaded Boots","Merchant's Ring",
   "Warden's Badge","Royal Armour","Broken Crown","Ragged Cloak",
   "Scholar's Ring","Robes of the Academy","Navigator's Compass","Wolf Coat",
-  // Other special items
   "Shadowmere Cloak"
 ]);
 
@@ -2007,7 +2012,8 @@ ${mqSummary}
 
 PLAYER: ${player.name} | ${player.class} Lv.${player.level} | HP:${player.hp}/${player.maxHp} | STR:${eff.str} AGI:${eff.agi} INT:${eff.int} WIL:${eff.wil} | Gold:${player.gold} | Rations:${countRations(player.inventory)} | Loc:${player.location}
 EQUIPPED: ${equippedSummary}
-INVENTORY: ${player.inventory.join(",") || "empty"} | Abilities:${player.abilities.join(",")}
+INVENTORY: ${player.inventory.filter(i => !CONCEALED_ITEMS.has(i)).join(",") || "empty"} | Abilities:${player.abilities.join(",")}
+CONCEALED (hidden on person — NPCs cannot see or react to these unless the player explicitly shows them): ${player.inventory.filter(i => CONCEALED_ITEMS.has(i)).join(",") || "none"}
 
 REPUTATION: ${repTier.label} (${player.reputation || 0} points) | Local standing in ${player.location}: ${LOCATION_RANKS[locRank]}
 FACTION MEMBERSHIPS: ${factionSummary}
@@ -2019,6 +2025,7 @@ ${player.context === "combat" && player.combat ? `COMBAT: ${buildCombatPrompt(pl
 CURRENT CONTEXT: ${player.context}
 LOCAL SETTLEMENT DATA: ${settlementData}
 RULES:
+- CONCEALED ITEMS RULE: Items listed under CONCEALED are hidden on the player's person (in a lining, secret pocket, wrapped cloth, etc.). NPCs, guards, and enemies CANNOT see, sense, or react to them unless the player explicitly says "I show them my X" or "I reveal my X". Never reference concealed items in NPC dialogue or reactions unprompted.
 - Write vivid immersive fantasy prose, 2-3 paragraphs
 - DO NOT offer numbered choices \u2014 the player uses a command panel to choose actions
 - Instead, describe the scene richly so the player knows what they can do
@@ -2049,7 +2056,7 @@ ${(player.gravestones || []).length > 0 ? `FALLEN HEROES: This player has died $
 - When a quest is clearly completed say "quest complete" somewhere in your response
 - When the player does something that clearly helps a faction or location, note it e.g. "reputation gain" or "Thornwood Druids favour"
 - When the player's action contains [FORAGE_FOUND:X], weave that find naturally into your description. If X is "Dried Meat" describe spotting preserved food or a traveller's cache. If "Trail Bread" describe hardtack or waymarker rations. If "Rations" describe a proper supply cache. If "Medicinal Herb" describe recognising a healing plant. If "Rare Mushroom" describe a striking fungus (Rogues and Mages feel its potential; others are cautious). If "nothing" describe searching thoroughly but finding only tracks, stones, or unremarkable undergrowth. Never announce the item mechanically \u2014 describe the discovery narratively.
-- SHOP & TRADING RULE: When a player tries to buy, sell, or trade items with any NPC, NEVER narrate a completed transaction and NEVER invent prices. You cannot add items to the player's inventory — only the Barter command can do that. Instead, describe the NPC displaying their wares and suggest the player use the Barter command to open the shop. Example: "The old woman gestures to her shelves of potions, willing to deal. (Use the Barter command to trade.)"
+- SHOP & TRADING RULE: When a player tries to buy, sell, or trade items with any NPC, NEVER narrate a completed transaction and NEVER invent prices. You cannot add items to the player's inventory — only the Barter command can do that. Instead, describe the NPC displaying their wares and suggest the player use the Barter command to open the shop.
 - NPC RULES: When you introduce a named NPC who speaks, has a role, or matters to the player, emit this tag on its own line: {"npc":{"name":"Mira","role":"Innkeeper","relationship":"friendly","notes":"One sentence about what the player knows"}}
   - relationship must be one of: neutral, friendly, hostile, indebted, rival, romantic
   - Only emit the tag for NEW NPCs not already in KNOWN NPCS below
@@ -4810,7 +4817,6 @@ function AethermoorRPG() {
     }
     spendToken();
     setIsLoading(true);
-    // ── Throw weapon detection ────────────────────────────────────────────
     const throwMatch = /(?:throw|hurl|fling|toss|chuck|launch|lob).{0,35}?(dagger|iron sword|sword|axe|arcane wand|wand|spear|knife|blade|weapon)/i.exec(cmdId);
     if (throwMatch) {
       const thrownKw = throwMatch[1].toLowerCase();
@@ -4837,8 +4843,6 @@ function AethermoorRPG() {
         saveGame(throwPlayer, worldSeed, messages, narrative, log);
       }
     }
-    // ── End throw detection ────────────────────────────────────────────────
-
     let msg = CMD_MESSAGES[cmdId] || cmdId;
     // // Append dice result to combat messages so narrator can react to roll quality
     if (diceState) {
