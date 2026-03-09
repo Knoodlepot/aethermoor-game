@@ -2035,6 +2035,7 @@ ${(player.gravestones || []).length > 0 ? `FALLEN HEROES: This player has died $
 - When a quest is clearly completed say "quest complete" somewhere in your response
 - When the player does something that clearly helps a faction or location, note it e.g. "reputation gain" or "Thornwood Druids favour"
 - When the player's action contains [FORAGE_FOUND:X], weave that find naturally into your description. If X is "Dried Meat" describe spotting preserved food or a traveller's cache. If "Trail Bread" describe hardtack or waymarker rations. If "Rations" describe a proper supply cache. If "Medicinal Herb" describe recognising a healing plant. If "Rare Mushroom" describe a striking fungus (Rogues and Mages feel its potential; others are cautious). If "nothing" describe searching thoroughly but finding only tracks, stones, or unremarkable undergrowth. Never announce the item mechanically \u2014 describe the discovery narratively.
+- SHOP & TRADING RULE: When a player tries to buy, sell, or trade items with any NPC, NEVER narrate a completed transaction and NEVER invent prices. You cannot add items to the player's inventory — only the Barter command can do that. Instead, describe the NPC displaying their wares, mention they are open to trade, and suggest the player use the Barter command to open the shop. Example: "The old woman gestures to her shelves of potions and dried goods, willing to deal. (Use the Barter command to trade.)"
 - NPC RULES: When you introduce a named NPC who speaks, has a role, or matters to the player, emit this tag on its own line: {"npc":{"name":"Mira","role":"Innkeeper","relationship":"friendly","notes":"One sentence about what the player knows"}}
   - relationship must be one of: neutral, friendly, hostile, indebted, rival, romantic
   - Only emit the tag for NEW NPCs not already in KNOWN NPCS below
@@ -5965,7 +5966,7 @@ function AethermoorRPG() {
           React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.gold}`, width: "100%", maxWidth: 480, boxShadow: `0 0 60px ${T.gold}22` } },
             React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
               React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 13, letterSpacing: 3 } },
-                saveSlotAction === "save" ? "\uD83D\uDCBE SAVE TO SLOT" : saveSlotAction === "load" ? "\u25B6 LOAD SAVE" : "\u2694 NEW GAME — SAVE FIRST?"
+                saveSlotAction === "save" ? "\uD83D\uDCBE SAVE TO SLOT" : saveSlotAction === "load" ? "\u25B6 LOAD SAVE" : "\u2694 NEW GAME \u2014 SAVE FIRST?"
               ),
               React.createElement("button", { onClick: () => setShowSaveSlots(false), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "\u2715")
             ),
@@ -5994,7 +5995,7 @@ function AethermoorRPG() {
                   )
                 );
               }),
-              saveSlotAction === "new" && React.createElement("button", { onClick: () => { setShowSaveSlots(false); clearSave(); }, style: { ...tf, background:"transparent", border:`1px solid ${T.border}`, color:T.textMuted, padding:"10px", fontSize:11, cursor:"pointer", letterSpacing:2, marginTop:4 } }, "SKIP — START FRESH WITHOUT SAVING")
+              saveSlotAction === "new" && React.createElement("button", { onClick: () => { setShowSaveSlots(false); clearSave(); }, style: { ...tf, background:"transparent", border:`1px solid ${T.border}`, color:T.textMuted, padding:"10px", fontSize:11, cursor:"pointer", letterSpacing:2, marginTop:4 } }, "SKIP \u2014 START FRESH WITHOUT SAVING")
             )
           )
         ),
@@ -6040,10 +6041,10 @@ function AethermoorRPG() {
 
         /* ── Legal footer ── */
         React.createElement("div", { style: { marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, textAlign: "center" } },
-          React.createElement("a", { href: "legal.html", target: "_blank", rel: "noopener noreferrer", style: { color: T.textFaint, fontSize: 11, fontFamily: "Crimson Text,serif", letterSpacing: 1, textDecoration: "none", transition: "color 0.2s" },
+          React.createElement("a", { href: "legal.html", target: "_blank", rel: "noopener noreferrer", style: { color: T.textFaint, fontSize: 11, fontFamily: "Crimson Text,serif", letterSpacing: 1, textDecoration: "none" },
             onMouseEnter: e => { e.target.style.color = T.textMuted; },
             onMouseLeave: e => { e.target.style.color = T.textFaint; }
-          }, "Privacy Policy & Legal · 18+ Only · support.aethermoor@gmail.com")
+          }, "Privacy Policy & Legal \u00b7 18+ Only \u00b7 support.aethermoor@gmail.com")
         )
       )
     );
