@@ -69,47 +69,20 @@ async function storageDelete(key) {
 
 // ── Save Slot System (3 slots) ─────────────────────────────────────────────
 function getSaveSlotKey(slot) { return "aethermoor_save_slot_" + slot; }
-
 function readSaveSlot(slot) {
-  try {
-    const raw = localStorage.getItem(getSaveSlotKey(slot));
-    return raw ? JSON.parse(raw) : null;
-  } catch(e) { return null; }
+  try { const raw = localStorage.getItem(getSaveSlotKey(slot)); return raw ? JSON.parse(raw) : null; }
+  catch(e) { return null; }
 }
-
 function writeSaveSlot(slot, player, worldSeed, messages, narrative, log) {
-  const data = {
-    slot,
-    savedAt: new Date().toISOString(),
-    playerName: player.name,
-    playerClass: player.class,
-    playerLevel: player.level,
-    playerLocation: player.location,
-    player: JSON.stringify(player),
-    worldSeed: JSON.stringify(worldSeed),
-    messages: JSON.stringify((messages || []).slice(-20)),
-    narrative: narrative || "",
-    log: JSON.stringify((log || []).slice(-60)),
-  };
+  const data = { slot, savedAt: new Date().toISOString(), playerName: player.name, playerClass: player.class, playerLevel: player.level, playerLocation: player.location, player: JSON.stringify(player), worldSeed: JSON.stringify(worldSeed), messages: JSON.stringify((messages||[]).slice(-20)), narrative: narrative||"", log: JSON.stringify((log||[]).slice(-60)) };
   localStorage.setItem(getSaveSlotKey(slot), JSON.stringify(data));
 }
-
-function deleteSaveSlot(slot) {
-  localStorage.removeItem(getSaveSlotKey(slot));
-}
-
+function deleteSaveSlot(slot) { localStorage.removeItem(getSaveSlotKey(slot)); }
 function loadSaveSlot(slot) {
   const data = readSaveSlot(slot);
   if (!data) return null;
-  try {
-    return {
-      player: JSON.parse(data.player),
-      worldSeed: JSON.parse(data.worldSeed),
-      messages: data.messages ? JSON.parse(data.messages) : [],
-      narrative: data.narrative || "",
-      log: data.log ? JSON.parse(data.log) : [],
-    };
-  } catch(e) { return null; }
+  try { return { player: JSON.parse(data.player), worldSeed: JSON.parse(data.worldSeed), messages: data.messages ? JSON.parse(data.messages) : [], narrative: data.narrative||"", log: data.log ? JSON.parse(data.log) : [] }; }
+  catch(e) { return null; }
 }
 const THEMES = {
   standard: {
@@ -1810,14 +1783,7 @@ const INIT_PLAYER = (name, cls) => ({
   int: CLASSES[cls].int,
   wil: CLASSES[cls].wil,
   gold: 25,
-  inventory: (() => {
-    const base = ["Health Potion x2", "Rations x3"];
-    if (cls === "Warrior") return [...base, "Iron Sword"];
-    if (cls === "Rogue")   return [...base, "Dagger"];
-    if (cls === "Mage")    return [...base, "Arcane Wand"];
-    if (cls === "Cleric")  return [...base, "Iron Sword"];
-    return base;
-  })(),
+  inventory: (() => { const b = ["Health Potion x2","Rations x3"]; if(cls==="Warrior") return [...b,"Iron Sword"]; if(cls==="Rogue") return [...b,"Dagger"]; if(cls==="Mage") return [...b,"Arcane Wand"]; if(cls==="Cleric") return [...b,"Iron Sword"]; return b; })(),
   location: LOCATIONS[0],
   reputation: 0,
   perks: [],
@@ -1825,14 +1791,7 @@ const INIT_PLAYER = (name, cls) => ({
   questsCompleted: 0,
   context: "explore",
   quests: [],
-  equipped: (() => {
-    const base = { weapon: null, offhand: null, head: null, body: null, feet: null, accessory: null };
-    if (cls === "Warrior") return { ...base, weapon: "Iron Sword" };
-    if (cls === "Rogue")   return { ...base, weapon: "Dagger" };
-    if (cls === "Mage")    return { ...base, weapon: "Arcane Wand" };
-    if (cls === "Cleric")  return { ...base, weapon: "Iron Sword" };
-    return base;
-  })(),
+  equipped: (() => { const b={weapon:null,offhand:null,head:null,body:null,feet:null,accessory:null}; if(cls==="Warrior") return {...b,weapon:"Iron Sword"}; if(cls==="Rogue") return {...b,weapon:"Dagger"}; if(cls==="Mage") return {...b,weapon:"Arcane Wand"}; if(cls==="Cleric") return {...b,weapon:"Iron Sword"}; return b; })(),
   travel: null,
   combat: null,
   exploredLocations: [LOCATIONS[0]],
@@ -4428,12 +4387,10 @@ function AethermoorRPG() {
   const levelUpQueue = useRef([]);
   const levelUpTimer = useRef(null);
   const [showSaveSlots, setShowSaveSlots] = React.useState(false);
-  const [saveSlotAction, setSaveSlotAction] = React.useState(null); // 'save' | 'load' | 'new'
+  const [saveSlotAction, setSaveSlotAction] = React.useState(null);
   const logRef = useRef(null);
   useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
+    if (logRef.current) { logRef.current.scrollTop = logRef.current.scrollHeight; }
   }, [narrative, log]);
   useEffect(() => {
     function onResize() {
@@ -6005,59 +5962,39 @@ function AethermoorRPG() {
 
         /* ── Save Slot Modal ── */
         showSaveSlots && React.createElement("div", { style: { position: "fixed", inset: 0, background: "#000000cc", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
-          React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.gold}`, width: "100%", maxWidth: 480, padding: 0, boxShadow: `0 0 60px ${T.gold}22` } },
+          React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.gold}`, width: "100%", maxWidth: 480, boxShadow: `0 0 60px ${T.gold}22` } },
             React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
               React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 13, letterSpacing: 3 } },
                 saveSlotAction === "save" ? "\uD83D\uDCBE SAVE TO SLOT" : saveSlotAction === "load" ? "\u25B6 LOAD SAVE" : "\u2694 NEW GAME — SAVE FIRST?"
               ),
-              React.createElement("button", { onClick: () => setShowSaveSlots(false), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715")
+              React.createElement("button", { onClick: () => setShowSaveSlots(false), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "\u2715")
             ),
             saveSlotAction === "new" && React.createElement("div", { style: { padding: "10px 20px", background: "#1a0a0a", borderBottom: `1px solid ${T.border}` } },
-              React.createElement("span", { style: { color: "#c07050", fontSize: 13, fontStyle: "italic" } }, "Choose a slot to save your current game first, or click \"Skip\" to start fresh without saving.")
+              React.createElement("span", { style: { color: "#c07050", fontSize: 13, fontStyle: "italic" } }, "Save to a slot first, or click Skip to start fresh without saving.")
             ),
             React.createElement("div", { style: { padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 } },
               [1, 2, 3].map(slot => {
-                const slotData = readSaveSlot(slot);
-                const isEmpty = !slotData;
-                const isActive = player && slot === (player._saveSlot || 0);
-                return React.createElement("div", { key: slot, style: { background: T.panelAlt, border: `1px solid ${isActive ? T.gold : T.border}`, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 } },
-                  React.createElement("div", { style: { ...tf, color: isActive ? T.gold : T.textMuted, fontSize: 11, letterSpacing: 2, minWidth: 50 } }, "SLOT " + slot, isActive && React.createElement("span", { style: { color: T.gold, fontSize: 9, display: "block", letterSpacing: 1 } }, "ACTIVE")),
+                const sd = readSaveSlot(slot);
+                const empty = !sd;
+                const active = player && slot === (player._saveSlot || 0);
+                return React.createElement("div", { key: slot, style: { background: T.panelAlt, border: `1px solid ${active ? T.gold : T.border}`, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 } },
+                  React.createElement("div", { style: { ...tf, color: active ? T.gold : T.textMuted, fontSize: 11, letterSpacing: 2, minWidth: 52 } }, "SLOT ", slot, active && React.createElement("span", { style: { color: T.gold, fontSize: 9, display: "block" } }, "ACTIVE")),
                   React.createElement("div", { style: { flex: 1 } },
-                    isEmpty
-                      ? React.createElement("div", { style: { color: T.textFaint, fontSize: 13, fontStyle: "italic" } }, "Empty slot")
-                      : React.createElement("div", null,
-                          React.createElement("div", { style: { color: T.text, fontSize: 14 } }, slotData.playerName, " the ", slotData.playerClass, " \xB7 Lv.", slotData.playerLevel),
-                          React.createElement("div", { style: { color: T.textMuted, fontSize: 11, marginTop: 2 } }, "\uD83D\uDCCD ", slotData.playerLocation, " \xB7 ", new Date(slotData.savedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }))
-                        )
+                    empty ? React.createElement("div", { style: { color: T.textFaint, fontSize: 13, fontStyle: "italic" } }, "Empty")
+                    : React.createElement("div", null,
+                        React.createElement("div", { style: { color: T.text, fontSize: 13 } }, sd.playerName, " the ", sd.playerClass, " \xB7 Lv.", sd.playerLevel),
+                        React.createElement("div", { style: { color: T.textMuted, fontSize: 11, marginTop: 2 } }, "\uD83D\uDCCD ", sd.playerLocation, " \xB7 ", new Date(sd.savedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" }))
+                      )
                   ),
                   React.createElement("div", { style: { display: "flex", gap: 6 } },
                     saveSlotAction === "load"
-                      ? !isEmpty && React.createElement("button", { onClick: () => {
-                          const d = loadSaveSlot(slot);
-                          if (d) {
-                            const p = { ...d.player, _saveSlot: slot };
-                            setPlayer(p); setWorldSeed(d.worldSeed); setMessages(d.messages); setNarrative(d.narrative); setLog(d.log);
-                            setShowSaveSlots(false); setScreen("game");
-                          }
-                        }, style: { ...tf, background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 12px", fontSize: 10, cursor: "pointer", letterSpacing: 1 } }, "LOAD")
-                      : React.createElement("button", { onClick: () => {
-                          if (saveSlotAction === "new") {
-                            if (!isEmpty) { if (!window.confirm("Overwrite save in Slot " + slot + "?")) return; }
-                            if (player) writeSaveSlot(slot, player, worldSeed, messages, narrative, log);
-                            setShowSaveSlots(false); clearSave();
-                          } else {
-                            if (!isEmpty) { if (!window.confirm("Overwrite save in Slot " + slot + "?")) return; }
-                            writeSaveSlot(slot, player, worldSeed, messages, narrative, log);
-                            const p2 = { ...player, _saveSlot: slot }; setPlayer(p2);
-                            saveGame(p2, worldSeed, messages, narrative, log);
-                            setShowSaveSlots(false);
-                          }
-                        }, style: { ...tf, background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 12px", fontSize: 10, cursor: "pointer", letterSpacing: 1 } }, "SAVE"),
-                    !isEmpty && React.createElement("button", { onClick: () => { if (window.confirm("Delete save in Slot " + slot + "?")) { deleteSaveSlot(slot); setShowSaveSlots(false); setTimeout(() => setShowSaveSlots(true), 10); } }, style: { background: "transparent", border: `1px solid #5a2a2a`, color: "#8a4040", padding: "6px 10px", fontSize: 10, cursor: "pointer" } }, "\uD83D\uDDD1")
+                      ? !empty && React.createElement("button", { onClick: () => { const d=loadSaveSlot(slot); if(d){ const p={...d.player,_saveSlot:slot}; setPlayer(p); setWorldSeed(d.worldSeed); setMessages(d.messages); setNarrative(d.narrative); setLog(d.log); setShowSaveSlots(false); setScreen("game"); } }, style: { ...tf, background: T.accent+"22", border:`1px solid ${T.accent}`, color:T.gold, padding:"6px 12px", fontSize:10, cursor:"pointer", letterSpacing:1 } }, "LOAD")
+                      : React.createElement("button", { onClick: () => { if(saveSlotAction==="new"){ if(!empty&&!window.confirm("Overwrite Slot "+slot+"?")) return; if(player) writeSaveSlot(slot,player,worldSeed,messages,narrative,log); setShowSaveSlots(false); clearSave(); } else { if(!empty&&!window.confirm("Overwrite Slot "+slot+"?")) return; writeSaveSlot(slot,player,worldSeed,messages,narrative,log); const p2={...player,_saveSlot:slot}; setPlayer(p2); saveGame(p2,worldSeed,messages,narrative,log); setShowSaveSlots(false); } }, style: { ...tf, background:T.accent+"22", border:`1px solid ${T.accent}`, color:T.gold, padding:"6px 12px", fontSize:10, cursor:"pointer", letterSpacing:1 } }, "SAVE"),
+                    !empty && React.createElement("button", { onClick: () => { if(window.confirm("Delete Slot "+slot+"?")){ deleteSaveSlot(slot); setShowSaveSlots(false); setTimeout(()=>setShowSaveSlots(true),10); } }, style: { background:"transparent", border:"1px solid #5a2a2a", color:"#8a4040", padding:"6px 10px", fontSize:10, cursor:"pointer" } }, "\uD83D\uDDD1")
                   )
                 );
               }),
-              saveSlotAction === "new" && React.createElement("button", { onClick: () => { setShowSaveSlots(false); clearSave(); }, style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "10px", fontSize: 11, cursor: "pointer", letterSpacing: 2, marginTop: 4 } }, "SKIP — START FRESH WITHOUT SAVING")
+              saveSlotAction === "new" && React.createElement("button", { onClick: () => { setShowSaveSlots(false); clearSave(); }, style: { ...tf, background:"transparent", border:`1px solid ${T.border}`, color:T.textMuted, padding:"10px", fontSize:11, cursor:"pointer", letterSpacing:2, marginTop:4 } }, "SKIP — START FRESH WITHOUT SAVING")
             )
           )
         ),
@@ -6073,13 +6010,13 @@ function AethermoorRPG() {
           hasSave && React.createElement("button", {
             onClick: () => { setSaveSlotAction("load"); setShowSaveSlots(true); },
             style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "14px 48px", fontSize: 14, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", width: 260, transition: "all 0.2s" },
-            onMouseEnter: e => { e.target.style.background = T.accent + "22"; e.target.style.borderColor = T.accent; e.target.style.color = T.gold; },
+            onMouseEnter: e => { e.target.style.background = T.accent+"22"; e.target.style.borderColor = T.accent; e.target.style.color = T.gold; },
             onMouseLeave: e => { e.target.style.background = "transparent"; e.target.style.borderColor = T.border; e.target.style.color = T.textMuted; }
           }, "\uD83D\uDCBE Load Save"),
           React.createElement("button", {
             onClick: () => hasSave ? (setSaveSlotAction("new"), setShowSaveSlots(true)) : setScreen("create"),
             style: { ...tf, background: "transparent", border: `1px solid ${hasSave ? T.border : T.accent}`, color: hasSave ? T.textMuted : T.gold, padding: "14px 48px", fontSize: 14, letterSpacing: 3, cursor: "pointer", textTransform: "uppercase", width: 260, transition: "all 0.2s" },
-            onMouseEnter: e => { e.target.style.background = T.accent + "22"; e.target.style.borderColor = T.accent; e.target.style.color = T.gold; },
+            onMouseEnter: e => { e.target.style.background = T.accent+"22"; e.target.style.borderColor = T.accent; e.target.style.color = T.gold; },
             onMouseLeave: e => { e.target.style.background = "transparent"; e.target.style.borderColor = hasSave ? T.border : T.accent; e.target.style.color = hasSave ? T.textMuted : T.gold; }
           }, hasSave ? "New Game" : "Begin Your Legend")
         ),
@@ -6099,6 +6036,14 @@ function AethermoorRPG() {
               style: { marginLeft: 6, color: tokenColor(tokens), fontSize: 10, animation: tokens <= 10 ? "pulse 1s infinite" : "none" }
             }, tokens <= 10 ? "\u26A0\uFE0F Critical!" : "\u26A0\uFE0F Running low!")
           )
+        ),
+
+        /* ── Legal footer ── */
+        React.createElement("div", { style: { marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, textAlign: "center" } },
+          React.createElement("a", { href: "legal.html", target: "_blank", rel: "noopener noreferrer", style: { color: T.textFaint, fontSize: 11, fontFamily: "Crimson Text,serif", letterSpacing: 1, textDecoration: "none", transition: "color 0.2s" },
+            onMouseEnter: e => { e.target.style.color = T.textMuted; },
+            onMouseLeave: e => { e.target.style.color = T.textFaint; }
+          }, "Privacy Policy & Legal · 18+ Only · support.aethermoor@gmail.com")
         )
       )
     );
@@ -6179,6 +6124,12 @@ function AethermoorRPG() {
 
         React.createElement("div", { style: { color: T.textFaint, fontSize: 11, marginTop: 4, fontStyle: "italic", fontFamily: "Crimson Text,serif", lineHeight: 1.8 } },
           "Each turn uses 1 token \xB7 Tokens never expire \xB7 New players receive 100 free tokens"
+        ),
+        React.createElement("div", { style: { marginTop: 16, textAlign: "center" } },
+          React.createElement("a", { href: "legal.html", target: "_blank", rel: "noopener noreferrer", style: { color: T.textFaint, fontSize: 11, fontFamily: "Crimson Text,serif", letterSpacing: 1, textDecoration: "none" },
+            onMouseEnter: e => { e.target.style.color = T.textMuted; },
+            onMouseLeave: e => { e.target.style.color = T.textFaint; }
+          }, "Privacy Policy & Terms of Use")
         )
       )
     );
@@ -6481,9 +6432,8 @@ React.createElement("button", { onClick: clearSave, style: { background: "transp
       `), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: "1/-1", background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 18, letterSpacing: 3 } }, "\u2694 AETHERMOOR"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, levelUpMsg && /* @__PURE__ */ React.createElement("div", { style: { color: "#ffffff", fontSize: 13, animation: "pulse 1s infinite", ...tf, textShadow: `0 0 12px ${T.gold}` } }, levelUpMsg), /* @__PURE__ */ React.createElement("button", { onClick: () => setScreen("title"), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F441} Vision"), /* @__PURE__ */ React.createElement("div", { onClick: () => setScreen("title"), style: { display: "flex", alignItems: "center", gap: 5, cursor: "pointer", padding: "4px 10px", border: `1px solid ${tokenBorder(tokens)}`, background: tokens <= 10 ? "#e0404022" : "transparent", transition: "all 0.2s" }, title: "Buy more tokens" },
   React.createElement("span", null, "\u{1FA99}"),
   React.createElement("span", { style: { ...tf, fontSize: 12, color: tokenColor(tokens), fontWeight: tokens <= 20 ? "bold" : "normal", animation: tokens <= 10 ? "pulse 1s infinite" : "none" } }, tokens, " tokens"),
-React.createElement("button", { onClick: () => { navigator.clipboard.writeText(playerId).then(() => { const btn = document.getElementById('copy-id-btn'); if(btn){ btn.textContent='\u2713 Copied!'; setTimeout(()=>{ btn.textContent='\uD83D\uDD11 My ID'; },2000); } }); }, id: "copy-id-btn", title: "Copy your Player ID to share with the game admin for token top-ups", style: { background: "transparent", border: "1px solid #3a2e18", color: "#6a5a3a", padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "Cinzel,serif", letterSpacing: 1, marginLeft: 4, transition: "all 0.2s" } }, "\uD83D\uDD11 My ID")
+React.createElement("button", { onClick: () => { navigator.clipboard.writeText(playerId).then(() => { const btn = document.getElementById('copy-id-btn'); if(btn){ btn.textContent='\u2713 Copied!'; setTimeout(()=>{ btn.textContent='\uD83D\uDD11 My ID'; },2000); } }); }, id: "copy-id-btn", title: "Copy your Player ID", style: { background: "transparent", border: "1px solid #3a2e18", color: "#6a5a3a", padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "Cinzel,serif", letterSpacing: 1, marginLeft: 4 } }, "\uD83D\uDD11 My ID")
 ), /* @__PURE__ */ React.createElement("button", { onClick: () => { setSaveSlotAction("new"); setScreen("title"); setShowSaveSlots(true); }, style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "New Game"),
-/* Save button */
 React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setScreen("title"); setShowSaveSlots(true); }, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\uD83D\uDCBE Save"))), /* /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", overflow: "hidden", flex: 1, minHeight: 0 } },
             /* Story tab */
       leftTab === "story" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" } },
