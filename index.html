@@ -354,7 +354,6 @@ const EQUIP_SLOTS = {
 const ITEM_STAT_BONUSES = {
   // Weapons
   "Dagger": { str: 1, agi: 1 },
-  "Arcane Wand": { int: 2 },
   "Iron Sword": { str: 2 },
   "Steel Sword": { str: 4 },
   "Blade of Aethermoor": { str: 8 },
@@ -1783,7 +1782,7 @@ const INIT_PLAYER = (name, cls) => ({
   int: CLASSES[cls].int,
   wil: CLASSES[cls].wil,
   gold: 25,
-  inventory: (() => { const b = ["Health Potion x2","Rations x3"]; if(cls==="Warrior") return [...b,"Iron Sword"]; if(cls==="Rogue") return [...b,"Dagger"]; if(cls==="Mage") return [...b,"Arcane Wand"]; if(cls==="Cleric") return [...b,"Iron Sword"]; return b; })(),
+  inventory: ["Health Potion x2", "Rations x3"],
   location: LOCATIONS[0],
   reputation: 0,
   perks: [],
@@ -1791,7 +1790,7 @@ const INIT_PLAYER = (name, cls) => ({
   questsCompleted: 0,
   context: "explore",
   quests: [],
-  equipped: (() => { const b={weapon:null,offhand:null,head:null,body:null,feet:null,accessory:null}; if(cls==="Warrior") return {...b,weapon:"Iron Sword"}; if(cls==="Rogue") return {...b,weapon:"Dagger"}; if(cls==="Mage") return {...b,weapon:"Arcane Wand"}; if(cls==="Cleric") return {...b,weapon:"Iron Sword"}; return b; })(),
+  equipped: (() => { const b={weapon:null,offhand:null,head:null,body:null,feet:null,accessory:null}; if(cls==="Warrior"||cls==="Cleric") return {...b,weapon:"Iron Sword"}; if(cls==="Rogue") return {...b,weapon:"Dagger"}; if(cls==="Mage") return {...b,weapon:"Arcane Wand"}; return b; })(),
   travel: null,
   combat: null,
   exploredLocations: [LOCATIONS[0]],
@@ -2035,7 +2034,7 @@ ${(player.gravestones || []).length > 0 ? `FALLEN HEROES: This player has died $
 - When a quest is clearly completed say "quest complete" somewhere in your response
 - When the player does something that clearly helps a faction or location, note it e.g. "reputation gain" or "Thornwood Druids favour"
 - When the player's action contains [FORAGE_FOUND:X], weave that find naturally into your description. If X is "Dried Meat" describe spotting preserved food or a traveller's cache. If "Trail Bread" describe hardtack or waymarker rations. If "Rations" describe a proper supply cache. If "Medicinal Herb" describe recognising a healing plant. If "Rare Mushroom" describe a striking fungus (Rogues and Mages feel its potential; others are cautious). If "nothing" describe searching thoroughly but finding only tracks, stones, or unremarkable undergrowth. Never announce the item mechanically \u2014 describe the discovery narratively.
-- SHOP & TRADING RULE: When a player tries to buy, sell, or trade items with any NPC, NEVER narrate a completed transaction and NEVER invent prices. You cannot add items to the player's inventory — only the Barter command can do that. Instead, describe the NPC displaying their wares, mention they are open to trade, and suggest the player use the Barter command to open the shop. Example: "The old woman gestures to her shelves of potions and dried goods, willing to deal. (Use the Barter command to trade.)"
+- SHOP & TRADING RULE: When a player tries to buy, sell, or trade items with any NPC, NEVER narrate a completed transaction and NEVER invent prices. You cannot add items to the player's inventory — only the Barter command can do that. Instead, describe the NPC displaying their wares and suggest the player use the Barter command to open the shop. Example: "The old woman gestures to her shelves of potions, willing to deal. (Use the Barter command to trade.)"
 - NPC RULES: When you introduce a named NPC who speaks, has a role, or matters to the player, emit this tag on its own line: {"npc":{"name":"Mira","role":"Innkeeper","relationship":"friendly","notes":"One sentence about what the player knows"}}
   - relationship must be one of: neutral, friendly, hostile, indebted, rival, romantic
   - Only emit the tag for NEW NPCs not already in KNOWN NPCS below
@@ -4792,6 +4791,35 @@ function AethermoorRPG() {
     }
     spendToken();
     setIsLoading(true);
+    // ── Throw weapon detection ────────────────────────────────────────────
+    const throwMatch = /(?:throw|hurl|fling|toss|chuck|launch|lob).{0,35}?(dagger|iron sword|sword|axe|arcane wand|wand|spear|knife|blade|weapon)/i.exec(cmdId);
+    if (throwMatch) {
+      const thrownKw = throwMatch[1].toLowerCase();
+      const inv = [...(player.inventory || [])];
+      const equip = { ...(player.equipped || {}) };
+      const allHeld = [...inv, ...Object.values(equip).filter(Boolean)];
+      const matchedItem = allHeld.find(i => i && i.toLowerCase().includes(thrownKw));
+      if (matchedItem) {
+        const invIdx = inv.findIndex(i => i && i.toLowerCase().includes(thrownKw));
+        let newInv = invIdx >= 0 ? inv.filter((_, i2) => i2 !== invIdx) : inv;
+        let newEquip = { ...equip };
+        if (equip.weapon && equip.weapon.toLowerCase().includes(thrownKw)) newEquip.weapon = null;
+        const statsAfter = recalcStats(player, newEquip);
+        let throwPlayer = { ...player, inventory: newInv, equipped: newEquip, ...statsAfter };
+        if (player.context === "combat" && currentEnemy) {
+          const { playerDmg } = calcPlayerAttack(player, currentEnemy, "attack", false);
+          const throwDmg = Math.max(1, Math.floor(playerDmg * 0.8));
+          const thrownEnemy = { ...currentEnemy, hp: Math.max(0, currentEnemy.hp - throwDmg) };
+          setCurrentEnemy(thrownEnemy);
+          throwPlayer = { ...throwPlayer, combat: { ...(player.combat || {}), enemy: thrownEnemy, lastPlayerDmg: throwDmg, lastAction: "attack" } };
+          setCombatLog(prev => [...prev.slice(-4), `\uD83D\uDDE1\uFE0F Thrown ${matchedItem}: ${throwDmg} damage!`]);
+        }
+        setPlayer(throwPlayer);
+        saveGame(throwPlayer, worldSeed, messages, narrative, log);
+      }
+    }
+    // ── End throw detection ────────────────────────────────────────────────
+
     let msg = CMD_MESSAGES[cmdId] || cmdId;
     // // Append dice result to combat messages so narrator can react to roll quality
     if (diceState) {
@@ -5718,7 +5746,7 @@ function AethermoorRPG() {
     if (/(heroic|bravely|courageously|selflessly|saved the day|great deed)/i.test(response)) {
       u = { ...u, reputation: (u.reputation || 0) + 5 };
     }
-    if (/(reputation loss|notoriety|feared|reviled|betrayed|cowardly act)/i.test(response)) {
+    if (/(reputation loss|lost.*reputation|reputation.*suffers|notoriety spreads|reviled by|branded a coward|cowardly act|word spreads of your cowardice|shamed.*publicly)/i.test(response)) {
       u = { ...u, reputation: (u.reputation || 0) - 5 };
     }
     const repGainLog = [];
@@ -6038,8 +6066,6 @@ function AethermoorRPG() {
             }, tokens <= 10 ? "\u26A0\uFE0F Critical!" : "\u26A0\uFE0F Running low!")
           )
         ),
-
-        /* ── Legal footer ── */
         React.createElement("div", { style: { marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, textAlign: "center" } },
           React.createElement("a", { href: "legal.html", target: "_blank", rel: "noopener noreferrer", style: { color: T.textFaint, fontSize: 11, fontFamily: "Crimson Text,serif", letterSpacing: 1, textDecoration: "none" },
             onMouseEnter: e => { e.target.style.color = T.textMuted; },
