@@ -4906,7 +4906,8 @@ function AethermoorRPG() {
   const [showFactionOffer, setShowFactionOffer] = useState(null);
   const [mobileTab, setMobileTab] = useState("story");
   const [diceState, setDiceState] = useState(null);
-  const [weather, setWeather] = useState("sunny");
+  const [weather, setWeather] = React.useState("sunny");
+  const [suggestions, setSuggestions] = React.useState([]);
 
   // ── Init: load saved game then transition past loading screen ─────────
   React.useEffect(() => {
@@ -5083,6 +5084,24 @@ function AethermoorRPG() {
     if (!m) return null;
     try { return JSON.parse(m[1]); } catch { return null; }
   }
+  function extractGrantTag(text) {
+    const m = text.match(/\{"grant"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
+  }
+  function extractNewQuestTag(text) {
+    const m = text.match(/\{"newQuest"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
+  }
+  function extractSuggestionsTag(text) {
+    const m = text.match(/\{"suggestions"\s*:\s*(\[[^\]]+\])\}/);
+    if (!m) return null;
+    try {
+      const arr = JSON.parse(m[1]);
+      return Array.isArray(arr) ? arr.slice(0, 3).filter((s) => typeof s === "string" && s.trim()) : null;
+    } catch { return null; }
+  }
   function registerNpc(player2, npcData, currentLocation, currentAct) {
     const existing = (player2.knownNpcs || []).find((n) => n.name.toLowerCase() === npcData.name.toLowerCase());
     if (existing) {
@@ -5110,6 +5129,10 @@ function AethermoorRPG() {
     let t = text.replace(/\{"context"\s*:\s*"\w+"\}/g, "");
     t = t.replace(/\{"npc"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"npcUpdate"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"npcGift"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"grant"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"newQuest"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
     t = t.replace(/```[a-z]*\s*\{"context"\s*:\s*"\w+"\}\s*```/g, "");
@@ -5362,6 +5385,7 @@ function AethermoorRPG() {
   }
   async function handleCommand(cmdId) {
     if (isLoading) return;
+    setSuggestions([]);
     if (tokens <= 0) {
       setScreen('out_of_tokens');
       return;
@@ -5452,6 +5476,28 @@ function AethermoorRPG() {
       u = { ...u, inventory: [...u.inventory || [], giftTag.item] };
       newLog.push({ type: "system", text: `\u{1F381} Received: ${giftTag.item}` });
       queueLevelUpMsg(`\u{1F381} ${giftTag.item} added to your pack!`, 4000);
+    }
+    const grantTag = extractGrantTag(response);
+    if (grantTag?.item) {
+      u = { ...u, inventory: [...(u.inventory || []), grantTag.item] };
+      newLog.push({ type: "system", text: `\u{1F9F3} Received: ${grantTag.item}` });
+      queueLevelUpMsg(`\u{1F9F3} ${grantTag.item} added to your pack!`, 4000);
+    }
+    const newQuestTag = extractNewQuestTag(response);
+    if (newQuestTag?.title && newQuestTag?.objective) {
+      const questId = `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const newQ = {
+        id: questId, title: newQuestTag.title, giver: "Unknown",
+        giverLocation: u.location, objective: newQuestTag.objective,
+        reward: "Unknown", type: "side", status: "active",
+        addedAt: new Date().toLocaleString(), notes: ""
+      };
+      const alreadyExists = (u.quests || []).some((q) => q.title.toLowerCase() === newQ.title.toLowerCase());
+      if (!alreadyExists) {
+        u = { ...u, quests: [...(u.quests || []), newQ] };
+        newLog.push({ type: "system", text: `\u{1F4DC} New quest: "${newQ.title}"` });
+        queueLevelUpMsg(`\u{1F4DC} New quest: "${newQ.title}"`, 4000);
+      }
     }
     if (!["attack", "ability", "defend", "flee"].includes(cmdId)) {
       const heal = response.match(/(?:heal|restore|recover) (\d+) (?:HP|hit points)/i);
@@ -6441,6 +6487,7 @@ function AethermoorRPG() {
         return updated;
       });
     });
+    setSuggestions(extractSuggestionsTag(response) || []);
     setIsLoading(false);
   }
   function recalcStats(p, newEquipped) {
@@ -7107,7 +7154,7 @@ React.createElement("button", { onClick: () => { navigator.clipboard.writeText(p
 React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setScreen("title"); setShowSaveSlots(true); }, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\uD83D\uDCBE Save"))), /* /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", overflow: "hidden", flex: 1, minHeight: 0 } },
             /* Story tab */
       leftTab === "story" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" } },
-        /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 20, paddingBottom: 32, display: "flex", flexDirection: "column" } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: isDyslexic ? 24 : 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 15, color: T.text, whiteSpace: "pre-wrap", flex: 1, ...dyxNarr } }, narrative), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 12, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 3, paddingLeft: entry.type === "choice" ? 8 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "8px 0" } }, "The Fates are weaving your story..."))
+        /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 20, paddingBottom: 32, display: "flex", flexDirection: "column" } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: isDyslexic ? 24 : 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 15, color: T.text, whiteSpace: "pre-wrap", flex: 1, ...dyxNarr } }, narrative), suggestions.length > 0 && !isLoading && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, marginBottom: 8, marginTop: -4 } }, ...suggestions.map((s, i) => /* @__PURE__ */ React.createElement("button", { key: i, onClick: () => handleCommand(s), style: { background: "transparent", border: `1px solid ${T.choiceColor}44`, borderRadius: 5, color: T.choiceColor, padding: "5px 12px", fontSize: 13, textAlign: "left", cursor: "pointer", fontFamily: "inherit", transition: "border-color 0.15s" } }, "\u2192 " + s))), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 12, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 3, paddingLeft: entry.type === "choice" ? 8 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "8px 0" } }, "The Fates are weaving your story..."))
       ),
       /* Map tab */
       leftTab === "map" && player && /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", position: "relative" } },
