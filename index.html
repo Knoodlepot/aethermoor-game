@@ -4493,6 +4493,7 @@ function AuthScreen({ onAuth, resetToken }) {
       const res  = await fetch(`${BACKEND_URL}/auth/signup`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || data.message || 'Registration failed'); return; }
+      if (data.requiresVerification) { setMode('verify_sent'); return; }
       setAuthToken(data.token);
       setMsg('Account created! Logging in...');
       setTimeout(() => onAuth(data), 700);
@@ -4525,8 +4526,8 @@ function AuthScreen({ onAuth, resetToken }) {
     finally { setLoading(false); }
   }
 
-  const titles = { login:'Sign In', register:'Create Account', forgot:'Forgot Password', reset:'Reset Password' };
-  const handlers = { login: doLogin, register: doRegister, forgot: doForgot, reset: doReset };
+  const titles = { login:'Sign In', register:'Create Account', forgot:'Forgot Password', reset:'Reset Password', verify_sent:'Check Your Email' };
+  const handlers = { login: doLogin, register: doRegister, forgot: doForgot, reset: doReset, verify_sent: e => e.preventDefault() };
 
   // Google OAuth constants
   const GOOGLE_CLIENT_ID = '899787108374-ichv1no0u6oncvtjo5asrf8h0cttj4im.apps.googleusercontent.com';
@@ -4589,6 +4590,20 @@ function AuthScreen({ onAuth, resetToken }) {
         React.createElement('div', { style:{ color:'#7a6040', fontSize:13 } }, titles[mode])
       ),
       React.createElement('form', { onSubmit: handlers[mode], 'aria-labelledby':'auth-title', autoComplete:'on' },
+        mode === 'verify_sent' && React.createElement('div', { style: { textAlign: 'center', padding: '8px 0 4px' } },
+          React.createElement('div', { style: { fontSize: 36, marginBottom: 14 } }, '📧'),
+          React.createElement('p', { style: { color: '#d4b896', fontSize: 15, lineHeight: 1.8, marginBottom: 6 } },
+            'A verification link has been sent to:'),
+          React.createElement('p', { style: { color: '#c9a84c', fontFamily: "'Cinzel',serif", fontSize: 12, letterSpacing: 1, marginBottom: 18 } },
+            email),
+          React.createElement('p', { style: { color: '#7a6040', fontSize: 13, lineHeight: 1.7, marginBottom: 20 } },
+            "Click the link in your email to verify your account and begin your adventure. Check your spam folder if it doesn't arrive within a minute."),
+          React.createElement('button', {
+            type: 'button',
+            onClick: () => { setMode('login'); setError(''); setMsg(''); },
+            style: { background: 'transparent', border: '1px solid #2e2010', color: '#7a6040', padding: '8px 24px', fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: 'pointer', borderRadius: 4 }
+          }, 'BACK TO SIGN IN')
+        ),
         (mode === 'login' || mode === 'register' || mode === 'forgot') &&
           React.createElement('div', { style:{ marginBottom:14 } },
             React.createElement('label', { style: labelStyle, htmlFor:'auth-email' }, 'EMAIL'),
@@ -4607,7 +4622,7 @@ function AuthScreen({ onAuth, resetToken }) {
           ),
         error   && React.createElement('div', { style:{ color:'#e05050', fontSize:13, marginBottom:10, textAlign:'center', role:'alert' } }, error),
         message && React.createElement('div', { style:{ color:'#80c060', fontSize:13, marginBottom:10, textAlign:'center', role:'status' } }, message),
-        React.createElement('button', { type:'submit', style: btnStyle, disabled: loading, 'aria-busy': loading },
+        mode !== 'verify_sent' && React.createElement('button', { type:'submit', style: btnStyle, disabled: loading, 'aria-busy': loading },
           loading ? 'Please wait...' : { login:'Sign In', register:'Create Account', forgot:'Send Reset Link', reset:'Set New Password' }[mode]
         )
       ),
@@ -4736,8 +4751,32 @@ function AethermoorRPG() {
     return p.get('reset') || null;
   }, []);
 
-  // On mount: verify existing JWT or detect reset flow
+  // Check for email-verification token in URL
+  const verifyToken = React.useMemo(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('verify') || null;
+  }, []);
+
+  // On mount: verify existing JWT or detect reset/verify flow
   React.useEffect(() => {
+    if (verifyToken) {
+      setAuthStatus('loading');
+      fetch(`${BACKEND_URL}/auth/verify-email?token=${encodeURIComponent(verifyToken)}`)
+        .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+        .then(({ ok, data }) => {
+          window.history.replaceState({}, '', window.location.pathname);
+          if (ok && data.token) {
+            setAuthToken(data.token);
+            onAuth(data);
+          } else {
+            setAuthStatus('unauthed');
+            setMode('login');
+            setError(data.message || 'Verification failed — the link may have already been used.');
+          }
+        })
+        .catch(() => { setAuthStatus('unauthed'); setMode('login'); setError('Could not verify email. Check your connection.'); });
+      return;
+    }
     if (resetToken) { setAuthStatus('unauthed'); return; }
     const token = getAuthToken();
     if (!token) { setAuthStatus('unauthed'); return; }
@@ -4748,7 +4787,7 @@ function AethermoorRPG() {
         else { clearAuth(); setAuthStatus('unauthed'); }
       })
       .catch(() => { setAuthStatus('unauthed'); });
-  }, [resetToken]);
+  }, [resetToken, verifyToken]);
 
   // Listen for session-expired events fired by backendFetch
   React.useEffect(() => {
@@ -6567,9 +6606,9 @@ function AethermoorRPG() {
           }, hasSave ? "New Game" : "Begin Your Legend"),
           React.createElement("button", {
             onClick: () => setShowHowToPlay(true),
-            style: { ...tf, background: "transparent", border: "none", color: T.textMuted, padding: "6px 16px", fontSize: 11, letterSpacing: 2, cursor: "pointer", opacity: 0.65, marginTop: 4 },
-            onMouseEnter: e => { e.currentTarget.style.color = T.gold; e.currentTarget.style.opacity = "1"; },
-            onMouseLeave: e => { e.currentTarget.style.color = T.textMuted; e.currentTarget.style.opacity = "0.65"; }
+            style: { ...tf, background: "transparent", border: "none", color: T.gold, padding: "6px 16px", fontSize: 11, letterSpacing: 2, cursor: "pointer", opacity: 0.8, marginTop: 4 },
+            onMouseEnter: e => { e.currentTarget.style.opacity = "1"; },
+            onMouseLeave: e => { e.currentTarget.style.opacity = "0.8"; }
           }, "? How to Play")
         ),
 
