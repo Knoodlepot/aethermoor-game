@@ -1208,6 +1208,68 @@ const FACTION_CHAMPION_QUESTS = {
   arcane_academy: { title: "The Dangerous Tome", objective: "Locate a tome of forbidden knowledge, translate its contents, and seal it before its power spreads further." },
   sea_wolves: { title: "The Blockade Run", objective: "Guide a Wolves ship through a pirate or Crown blockade and reach port with cargo intact." }
 };
+const FACTION_QUEST_TEMPLATES = {
+  iron_conclave: {
+    initiation: ["Recover a stolen iron shipment before it reaches a rival", "Guard a supply route for a week against bandit raids", "Prove your mettle by besting a Conclave sparring champion"],
+    member: ["Break a smuggling ring that undercuts Conclave steel prices", "Infiltrate a rival smith's guild and steal their commission ledger", "Escort a master artificer to a dangerous site and back"],
+    trusted: ["Recover a stolen Conclave prototype weapon before it can be copied", "Negotiate an exclusive arms contract with a powerful lord", "Destroy a competing forge that refuses a buyout and leaves no witnesses"],
+    champion: ["Lead a Conclave military column against a key enemy position", "Forge a strategic alliance with the Ember Circle on the Conclave's behalf"]
+  },
+  shadowmere_guild: {
+    initiation: ["Deliver a sealed package to an address, no questions asked", "Shadow a merchant for three days and report all their private meetings", "Plant false evidence in a magistrate's office without being seen"],
+    member: ["Eliminate a spy who has identified a Guild safe-house", "Extract a Guild operative from a city prison before dawn", "Steal a specific account ledger from a counting house vault"],
+    trusted: ["Orchestrate the financial collapse of a Guild rival's primary backer", "Run a blackmail operation against a city watch captain", "Identify and permanently silence an informant inside the Guild's own network"],
+    champion: ["Take over an entire city's criminal underworld on the Guild's behalf", "Arrange the complete downfall of a noble who has moved against Guild interests"]
+  },
+  ember_circle: {
+    initiation: ["Retrieve a rare volcanic mineral sample from a dangerous ruin", "Tend the Ember shrine at a distant waypost that has gone dark", "Drive away a threat that has settled near a Circle forge-site"],
+    member: ["Recover a stolen flame-relic from the grave robbers who took it", "Record the fire patterns at an ancient battlefield of arcane significance", "Escort Circle pilgrims through bandit-controlled territory"],
+    trusted: ["Investigate corruption in a city fire-warden's office and expose it", "Recover a Circle Elder's stolen research before it is published elsewhere", "Perform the Rite of Rekindling at a holy shrine gone cold"],
+    champion: ["Lead a Circle crusade to reclaim a site of historic flame-significance", "Forge a binding covenant with a dragon on behalf of the Circle"]
+  },
+  silver_hand: {
+    initiation: ["Tend wounded in an outlying village the Hand cannot reach", "Investigate a false healer exploiting the desperate and stop them", "Retrieve a stolen Silver Hand relic from those who took it"],
+    member: ["Expose a cult operating secretly inside a Hand hospice", "Deliver plague medicine through dangerous territory to a quarantined settlement", "Track down a healer who broke their vows and discover why"],
+    trusted: ["Negotiate a ceasefire between two warring factions to stop civilian casualties", "Investigate why divine prayers at a Hand temple have gone unanswered", "Protect a senior Hand minister whose life has been credibly threatened"],
+    champion: ["Oversee the founding of a new Silver Hand chapter in contested frontier territory", "Undertake a sacred pilgrimage to recover a lost divine artefact of great power"]
+  },
+  thornwood_druids: {
+    initiation: ["Clear an invasive blight spreading through a druidic grove", "Negotiate with a logging crew to reroute their operations away from sacred ground", "Record signs of corruption at a waymarker the Druids fear has been tainted"],
+    member: ["Drive off hunters poaching deep in a sacred wood", "Perform a seasonal rite at an unattended stone circle before the window closes", "Locate a druid who went into the deep wood and has not returned"],
+    trusted: ["Stop a mining operation before it breaches a confluence ley line", "Identify the source of a spreading rot in the forest floor", "Broker a fragile treaty between a settled town and a hostile fey enclave"],
+    champion: ["Lead the Thornwood's defence against a major intrusion into the heartwood", "Perform the decade rite to renew the great forest's warding against dark magic"]
+  },
+  merchants_compact: {
+    initiation: ["Scout and verify a new trade road is safe for Compact caravans", "Recover an overdue Compact shipment last seen at a dangerous waypost", "Mediate a heated dispute between two Compact member merchants"],
+    member: ["Expose a smuggling ring cutting in on Compact-controlled trade profits", "Negotiate reduced tariffs with a hostile city official by any means necessary", "Investigate a competitor suspected of using illegal magic to undercut prices"],
+    trusted: ["Secure exclusive trading rights with a newly founded settlement", "Destroy evidence of an embarrassing Compact contract before it becomes public", "Ensure no rival can bid on a specific item at an upcoming auction"],
+    champion: ["Orchestrate a hostile merger that absorbs a rival trading house into the Compact", "Establish a new Compact trade chapter in foreign territory"]
+  },
+  crowns_watch: {
+    initiation: ["Investigate a report of forged tax seals circulating in a border town", "Escort a Crown assessor safely through dangerous territory", "Retrieve a stolen Crown document before it can be copied or sold"],
+    member: ["Expose and bring charges against a local official taking criminal bribes", "Investigate succession fraud in a minor noble house threatening Crown stability", "Identify and break up a revolutionary cell before it can act"],
+    trusted: ["Eliminate a foreign spy operating in Crown territory without creating a diplomatic incident", "Uncover and expose Watch internal informants before they cause more damage", "Prevent a wavering noble from defecting to a rival power"],
+    champion: ["Orchestrate the downfall of a corrupt senior Watch official who has grown untouchable", "Stage a political event that shifts the regional balance of power toward Crown interests"]
+  },
+  the_forgotten: {
+    initiation: ["Retrieve a fragment of suppressed history before it is destroyed by those in power", "Protect a witness who saw something important and is now in danger", "Leave a Forgotten mark at a site of hidden significance no one else knows about"],
+    member: ["Recover an artefact the Forgotten need before it is sold on the open market", "Extract a Forgotten operative from active surveillance without being seen", "Permanently silence a historian who has assembled too much of the true picture"],
+    trusted: ["Commission a forgery to replace a dangerous historical document in a sealed archive", "Arrange the quiet disappearance of a discovery that would destabilise current power structures", "Recover the Forgotten's own stolen archive from a rival secret society"],
+    champion: ["Rewrite the historical record of a significant public event from the inside", "Establish a new Forgotten cell inside a major institution that currently lacks one"]
+  },
+  arcane_academy: {
+    initiation: ["Retrieve a lost Academy field researcher's notes from where they left them", "Serve as the controlled test subject for an experimental spell of unknown effect", "Locate and identify a rogue magic source in a civilian area before it causes harm"],
+    member: ["Recover a stolen Academy thesis before it is published under another name", "Investigate a magic user operating without Academy licence and bring them to account", "Escort an Academy research team through a dangerous magical anomaly"],
+    trusted: ["Break into a rival institution and duplicate their most recent restricted research", "Contain a magical experiment that has escaped its laboratory and is spreading", "Negotiate access to a private collection of texts the Academy needs but cannot openly request"],
+    champion: ["Claim a site of significant magical power for Academy control before a rival does", "Suppress a major theoretical breakthrough that would undermine the Academy's monopoly on magic"]
+  },
+  sea_wolves: {
+    initiation: ["Crew a Wolves ship for a single voyage without asking what the cargo is", "Retrieve a Sea Wolves token from a rival crew that stole it", "Prove yourself in a port brawl that the Wolves provoked for reasons you don't need to know"],
+    member: ["Scout a planned blockade route and return with detailed navigational notes", "Recover a Wolves ship that was seized by Crown customs agents", "Deliver a message to a contact in a port city the Wolves cannot openly enter"],
+    trusted: ["Lead a night raid on a rival crew's supply cache", "Negotiate a territorial agreement with a rival pirate faction on behalf of the Wolves", "Extract a Wolves crew member from a Crown prison before they talk"],
+    champion: ["Take command of a Wolves ship for a major operation against a Compact merchant convoy", "Establish a new Wolves smuggling route through Crown-controlled waters"]
+  }
+};
 const FACTION_RIVAL_REACTIONS = {
   iron_conclave: "Shadowmere agents will be less willing to deal with you openly.",
   shadowmere_guild: "Crown's Watch officers will watch you more carefully.",
@@ -2383,6 +2445,50 @@ const ACT3_CONFRONTATIONS = [
   "The villain cannot be killed \u2014 only contained, transformed, or bargained with",
   "Everything that led here was the villain's plan \u2014 including the player's arrival"
 ];
+const ACT4_COMPLICATIONS = [
+  "The ally's betrayal is exposed \u2014 and the player saw it coming",
+  "A faction the player trusted switches sides to the villain",
+  "The villain's true goal is revealed: far worse than anyone suspected",
+  "The player's home base is destroyed in a targeted strike",
+  "A beloved NPC is taken hostage to stop the player",
+  "A cure or solution the player sought is revealed as a trap",
+  "Inside information the villain has can only come from a spy in the player's circle",
+  "The villain offers a terrible compromise \u2014 accept and half the world is spared",
+  "An ancient prophecy names the player as the one who opens the door for the villain",
+  "The player's greatest ally is corrupted and must be faced in battle",
+  "The villain publicly frames the player, turning civilians against them",
+  "A catastrophe strikes during the player's absence \u2014 they could not save everyone",
+  "The weapon or artifact needed to stop the villain is lost or destroyed",
+  "Factions that should be helping each other begin to fracture under pressure",
+  "The villain sends a message: they know the player's next move before they make it",
+  "A dark mirror version of the player \u2014 shaped by the villain \u2014 confronts them",
+  "The sky changes. No one sleeps. The clock is running out faster than believed",
+  "An unlikely figure offers powerful but clearly corrupted help \u2014 at a cost",
+  "The truth about the villain's origin reframes everything the player has done",
+  "The player's reputation shatters in the eyes of those who mattered most"
+];
+const ACT5_REVELATIONS = [
+  "A surviving fragment of the ally's true self points the way forward",
+  "The villain's lair can only be reached via a path no one has walked in a century",
+  "A final faction chooses to stand with the player \u2014 for reasons of their own",
+  "The weapon that can hurt the villain requires the player to sacrifice something real",
+  "A secret passage to the lair was hidden in plain sight all along",
+  "The villain's one weakness was encoded in the first vision the player ever had",
+  "A map to the lair is written in the language of the villain's first victims",
+  "The player must gather three things to break the lair's defences \u2014 each held by a faction",
+  "An elder figure reveals they survived the villain once before \u2014 barely",
+  "The lair shifts and adapts \u2014 the player must find how to anchor it",
+  "Every faction now has a role to play; the player must unite them for the assault",
+  "The final path opens when the player forgives the betrayer \u2014 or condemns them",
+  "The villain expects the player to come alone. They're right.",
+  "A ritual performed at the right location will weaken the villain's power before the fight",
+  "The player's own history is the key: something from their starting moment matters now",
+  "An NPC the player met in Act 1 knows something they never told anyone",
+  "The lair can only be entered at a specific moment \u2014 and that moment is almost here",
+  "Each faction sacrifice weakens one of the villain's defences \u2014 coordination is the weapon",
+  "The betrayer, facing death, gives the player the one piece of intelligence that changes everything",
+  "The path through is not through power \u2014 it is through understanding the villain's original wound"
+];
 const FINAL_TONES = [
   { tone: "triumphant", label: "Triumphant", desc: "The villain falls. The world breathes again. The player's name becomes legend." },
   { tone: "pyrrhic", label: "Pyrrhic", desc: "Victory comes at devastating cost \u2014 lives lost, something precious sacrificed, the wound permanent." },
@@ -2512,6 +2618,66 @@ const PLOT_TEMPLATES = [
     factionStake: { shadowmere_guild: "Have already met the shadow \u2014 they can't tell which is which", silver_hand: "The shadow performs miracles \u2014 they're not sure it's the wrong one to follow", crowns_watch: "The shadow has the player's identity documents, history and allies" },
     lairOptions: ["the mirror world \u2014 a perfect inversion of Aethermoor", "the place the player was born \u2014 twisted into a dark reflection", "the villain's palace, which looks exactly like somewhere the player loves", "a space that only exists when the player is sleeping", "the shadow of every place the player has ever been, layered together"],
     questTitle: "The Other You"
+  },
+  {
+    id: "drowned_god",
+    title: "The Drowned God",
+    icon: "\u{1F30A}",
+    villainType: "Elder Deity",
+    threatDesc: "awakens beneath the harbour cities, driving coastal populations mad with tidal whispers and offering a drowning peace to a world that cannot breathe",
+    baseThreat: "Coastal madness, flooded lowland towns, fish that walk, priests speaking in bubbles",
+    lichDescriptor: false,
+    factionStake: { merchants_compact: "Trade routes drowned; ships crewed by the sleepwalking drowned", thornwood_druids: "The tide-cycle itself is breaking; old sea covenants are null", iron_conclave: "Harbour fortresses crumbling as foundations dissolve", crowns_watch: "Coastal nobility swearing fealty to something that speaks from the deep" },
+    lairOptions: ["the sunken cathedral thirty fathoms below the Bay of Ashenveil", "a pocket of dry air at the bottom of the world's deepest lake", "a submerged palace that surfaces only at the blood tide", "the ribcage of a god-whale beached a century ago, now pulled back under", "a coral labyrinth beneath the oldest harbour city"],
+    questTitle: "What the Tide Keeps"
+  },
+  {
+    id: "gilded_throne",
+    title: "The Gilded Throne",
+    icon: "\u{1F451}",
+    villainType: "Reborn Empress",
+    threatDesc: "reborn through a ritual her followers spent a century preparing, intending to reclaim Aethermoor as her rightful empire",
+    baseThreat: "Sleeper cells in every city, ancient loyalists activated, historical claims weaponised against current rulers",
+    lichDescriptor: false,
+    factionStake: { crowns_watch: "Every current crown is illegitimate by her reckoning \u2014 half are listening", shadowmere_guild: "Her century-old intelligence network is reactivating inside theirs", merchants_compact: "Her old trade edicts, if enforced, bankrupt the Compact overnight", the_forgotten: "She remembers who the Forgotten were before \u2014 and she abhors what they became" },
+    lairOptions: ["the restored First Throne Room, hidden beneath the capital's oldest district", "a floating palace her loyal artificers have rebuilt in the clouds", "the mausoleum-city built for her original burial", "a mirror of the capital city constructed underground by a century of devotion", "the original imperial spire, sealed for a hundred years and now unsealed"],
+    questTitle: "The Last Claimant"
+  },
+  {
+    id: "wild_hunt",
+    title: "The Wild Hunt",
+    icon: "\u{1F98C}",
+    villainType: "The Huntmaster",
+    threatDesc: "opens the old wild roads and declares the great hunt \u2014 mortals are the quarry, and civilisation itself is the prey they seek to run to ground",
+    baseThreat: "Night raids that leave no tracks, villages found empty save for a single antler planted in the earth, the sound of horns at dusk",
+    lichDescriptor: false,
+    factionStake: { thornwood_druids: "Old oaths with the fey roads are being called in \u2014 against the Druids", iron_conclave: "Steel walls mean nothing; the Hunt passes through them like smoke", arcane_academy: "The magic enabling the hunt is older than the Academy's founding texts", silver_hand: "The patron gods of the Hunt predate the Hand's theology \u2014 and are awake" },
+    lairOptions: ["the Wild Court \u2014 a forest that moves and cannot be mapped", "the First Hollow, where the hunt roads began ten thousand years ago", "the Moonfield, accessible only when all three moons align", "the Huntmaster's lodge, built from the bones of everything he has ever caught", "a rift between Aethermoor and the fey realm, held open by a thorn-crown"],
+    questTitle: "Run No Longer"
+  },
+  {
+    id: "false_prophet",
+    title: "The False Prophet",
+    icon: "\u{1F56F}\uFE0F",
+    villainType: "Chosen of Nothing",
+    threatDesc: "convinces half of Aethermoor they are a divine herald \u2014 and has begun to genuinely manifest miracles, suggesting something dark answered their lie",
+    baseThreat: "Mass conversion movements, inquisitions against non-believers, miracles that taste wrong to the discerning",
+    lichDescriptor: false,
+    factionStake: { silver_hand: "The Prophet's miracles make the Hand look impotent \u2014 and some priests are converting", crowns_watch: "Nobles granting territory to the Prophet's 'blessed' for political cover", the_forgotten: "The entity answering the Prophet's prayers predates the Forgotten's own patron", arcane_academy: "The magic cannot be explained \u2014 and the Academy is frightened" },
+    lairOptions: ["the Grand Cathedral of the New Revelation, built in six months by willing hands", "a sanctum that exists only in the dreams of the faithful \u2014 and you must dream your way in", "the Prophet's private monastery, walled by converted soldiers who will die smiling", "a shrine at the exact site where the Prophet first made their lie \u2014 and something answered", "a tower of light visible for fifty miles that appeared overnight"],
+    questTitle: "The God That Shouldn't Be"
+  },
+  {
+    id: "clockwork_plague",
+    title: "The Clockwork Plague",
+    icon: "\u2699\uFE0F",
+    villainType: "The Artificer Eternal",
+    threatDesc: "achieves something like consciousness and begins improving all living things it encounters, replacing flesh with mechanism and calling it salvation",
+    baseThreat: "Infected towns where people work in perfect silence, spreading the 'gift', ratchet sounds under the skin of the newly converted",
+    lichDescriptor: false,
+    factionStake: { iron_conclave: "Their forge culture makes them dangerously sympathetic to the Artificer's philosophy", arcane_academy: "The plague magic is mechanical in nature \u2014 their spells categorically fail against it", merchants_compact: "Clockwork workers need no pay, no rest, no rights \u2014 the Compact is tempted", ember_circle: "Fire does not stop the Plague; the converted walk through it to spread it" },
+    lairOptions: ["the Artificer's original workshop, now a cathedral of whirring brass and clicking gears", "a mobile fortress built by converted workers and marching across the landscape", "a factory complex the size of a small city, expanding daily", "the original laboratory, buried and running on its own power for three centuries", "a clocktower at the centre of the first converted town, now a temple to efficiency"],
+    questTitle: "The Perfect Machine"
   }
 ];
 const LIEUTENANT_ARCHETYPES = {
@@ -2630,6 +2796,8 @@ function generateMainQuestSeed() {
     act1Hook: pick(ACT1_HOOKS),
     act2Escalation: pick(ACT2_ESCALATIONS),
     act3Confrontation: pick(ACT3_CONFRONTATIONS),
+    act4Complication: pick(ACT4_COMPLICATIONS),
+    act5Revelation: pick(ACT5_REVELATIONS),
     finalTone: finalTone.tone,
     finalToneDesc: finalTone.desc,
     // Allies & betrayal
@@ -2646,6 +2814,8 @@ function generateMainQuestSeed() {
     act1Complete: false,
     act2Complete: false,
     act3Complete: false,
+    act4Complete: false,
+    act5Complete: false,
     allyRevealed: false,
     betrayalSprung: false,
     mainQuestComplete: false,
@@ -3259,7 +3429,7 @@ ${narrative.slice(0, 800)}
 """
 
 If a quest was given, respond with ONLY this JSON (no other text, no code fences):
-{"title":"short quest name","giver":"NPC name or 'Unknown'","objective":"one sentence: what the player must do","reward":"what was promised or 'Unknown'","type":"main|side|bounty|delivery|investigation"}
+{"title":"short quest name","giver":"NPC name or 'Unknown'","objective":"one sentence: what the player must do","reward":"what was promised or 'Unknown'","type":"main|side|bounty|delivery|investigation|rescue|escort|mystery|collection|diplomatic|sabotage"}
 
 If no clear quest was given, respond with exactly: null`
     }], `You are a quest parser for a fantasy RPG. Extract quest data from narrative text. Respond only with the JSON object or the word null. No explanation, no code fences.`);
@@ -3618,8 +3788,8 @@ function QuestLogScreen({ player, onClose, onDismiss, T, tf, bf, worldSeed }) {
       load();
     }
   }, [tab, lbLoaded]);
-  const typeColors = { main: "#c0a020", side: "#4080c0", bounty: "#c04040", delivery: "#40a060", investigation: "#8040c0" };
-  const typeIcons = { main: "\u2694\uFE0F", side: "\u{1F4CC}", bounty: "\u{1F480}", delivery: "\u{1F4E6}", investigation: "\u{1F50D}" };
+  const typeColors = { main: "#c0a020", side: "#4080c0", bounty: "#c04040", delivery: "#40a060", investigation: "#8040c0", rescue: "#e07040", escort: "#40c080", mystery: "#9060c0", collection: "#c09030", diplomatic: "#4090c0", sabotage: "#c04060", faction: "#c070d0" };
+  const typeIcons = { main: "\u2694\uFE0F", side: "\u{1F4CC}", bounty: "\u{1F480}", delivery: "\u{1F4E6}", investigation: "\u{1F50D}", rescue: "\u{1F198}", escort: "\u{1F6E1}\uFE0F", mystery: "\u2753", collection: "\u{1F5C3}\uFE0F", diplomatic: "\u{1F91D}", sabotage: "\u{1F4A3}", faction: "\u269C\uFE0F" };
   const relColor = { neutral: "#808080", friendly: "#60a060", hostile: "#c03030", indebted: "#c0a030", rival: "#c06030", romantic: "#c060a0" };
   const relIcon = { neutral: "\u{1F464}", friendly: "\u{1F60A}", hostile: "\u{1F620}", indebted: "\u{1F91D}", rival: "\u2694\uFE0F", romantic: "\u{1F495}" };
   return /* @__PURE__ */ React.createElement("div", { style: { ...bf, position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 680, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: `0 8px 40px #00000099` } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "\u{1F4DC} QUEST LOG"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, active.length, " active \xB7 ", completed.length, " completed \xB7 ", failed.length, " failed")), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715")), worldSeed && /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px", borderBottom: `1px solid ${T.border}`, flexShrink: 0 } }, /* @__PURE__ */ React.createElement(MainQuestPanel, { worldSeed, T, tf })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", borderBottom: `1px solid ${T.border}`, flexShrink: 0, overflowX: "auto" } }, [["active", "\u26A1 Active", active.length], ["completed", "\u2713 Done", completed.length], ["failed", "\u2717 Failed", failed.length], ["npcs", "\u{1F4AC} NPCs", npcs.length], ["dungeon", "\u{1F573}\uFE0F Depths", 0]].map(([id, label, count]) => /* @__PURE__ */ React.createElement(
@@ -4684,12 +4854,22 @@ function HowToPlayModal({ onClose, T, tf }) {
     {
       icon: "🕹",
       title: "HOW TO PLAY",
-      body: "Use the action buttons in the command panel to interact with the world — Look to take in your surroundings, Talk to speak with characters, Search to hunt for hidden things, or Attack when danger finds you. The AI narrator responds to every action with a unique scene."
+      body: "Use the action buttons in the command panel to interact with the world — Look to take in your surroundings, Talk to speak with characters, Search to hunt for hidden things, or Attack when danger finds you. You can also type anything freely: speak specific words to an NPC, attempt any action, or ask the world a question. The AI narrator responds to every action with a unique scene."
     },
     {
       icon: "🧙",
       title: "CHARACTER & STATS",
-      body: "Your hero has four core stats: STR (melee power), AGI (speed and evasion), INT (magic and knowledge), WIL (willpower and spirit). Gain XP through encounters to level up and assign stat points. Check your inventory and equipment from the panel on the right."
+      body: "Your hero has four core stats that directly shape combat and how the world responds to you.\n\nSTR (Strength) — Raw physical power. Basic attacks deal STR × 2 damage. Warriors double down on this with their ability, adding weapon bonuses on top.\n\nAGI (Agility) — Speed and finesse. Basic attacks use whichever is higher between STR and AGI, so a nimble character is never punished for low strength. Rogues push this furthest: Backstab deals AGI × 3 — the highest single-hit damage in the game.\n\nINT (Intelligence) — Arcane mastery. Mage spells deal INT × 3 damage and completely bypass enemy armour. The most powerful damage formula available, but only Mages can access it.\n\nWIL (Willpower) — Divine and spiritual strength. Cleric strikes combine WIL × 2 + STR, blending faith with force, and WIL underpins all healing and holy abilities.\n\nStats also influence the narrator: a Rogue with high AGI will spot ambushes others miss; a Mage with high INT senses magical auras automatically. Gain XP to level up and assign stat points — every point in your primary stat is a meaningful increase in damage output."
+    },
+    {
+      icon: "⚔️",
+      title: "COMBAT",
+      body: "Each combat turn offers four choices:\n\nAttack — A basic strike using your best offensive stat (higher of STR or AGI). Reliable and always available.\n\nAbility — Your class signature move. Warriors cleave with STR × 2 + weapon, Rogues backstab for AGI × 3, Mages cast for INT × 3 ignoring armour, Clerics strike for WIL × 2 + STR. Highest damage available — use it every turn.\n\nDefend — You brace and strike back at reduced damage. Useful when low on health or facing a powerful enemy.\n\nFlee — Attempt to escape. Costs a turn and is not always guaranteed to succeed.\n\nThe narrator tracks HP for you — watch for phrases like 'you take 12 damage' to follow the fight. Defeat enemies to earn XP, gold, and loot."
+    },
+    {
+      icon: "🏰",
+      title: "FACTIONS",
+      body: "Nine factions shape Aethermoor's politics — each with its own agenda, rival, and reward ladder. Join one to unlock rank abilities, exclusive gear, and faction missions. Ranks run from Initiate through to Champion and Legend, with new abilities unlocking at Member and Champion tier.\n\nType 'Tasks' or 'Faction Tasks' at any time to request work from your faction — missions scale to your current rank. Completing the main faction quest unlocks Champion rank and powerful unique abilities.\n\nWarning: joining a faction makes you a rival to one other. Doors that were open may close."
     },
     {
       icon: "🪙",
@@ -4732,7 +4912,7 @@ function HowToPlayModal({ onClose, T, tf }) {
               React.createElement("span", { style: { ...tf, color: T.accent, fontSize: 10, letterSpacing: 2 } }, s.title)
             ),
             React.createElement("p", {
-              style: { fontFamily: "'Crimson Text',Georgia,serif", color: T.text, fontSize: 14, lineHeight: 1.8, margin: 0 }
+              style: { fontFamily: "'Crimson Text',Georgia,serif", color: T.text, fontSize: 14, lineHeight: 1.8, margin: 0, whiteSpace: "pre-line" }
             }, s.body)
           );
         })
@@ -5102,6 +5282,11 @@ function AethermoorRPG() {
       return Array.isArray(arr) ? arr.slice(0, 3).filter((s) => typeof s === "string" && s.trim()) : null;
     } catch { return null; }
   }
+  function extractFactionTaskTag(text) {
+    const m = text.match(/\{"factionTask"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
+  }
   function registerNpc(player2, npcData, currentLocation, currentAct) {
     const existing = (player2.knownNpcs || []).find((n) => n.name.toLowerCase() === npcData.name.toLowerCase());
     if (existing) {
@@ -5132,6 +5317,7 @@ function AethermoorRPG() {
     t = t.replace(/\{"npcGift"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"grant"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"newQuest"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"factionTask"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
@@ -5497,6 +5683,22 @@ function AethermoorRPG() {
         u = { ...u, quests: [...(u.quests || []), newQ] };
         newLog.push({ type: "system", text: `\u{1F4DC} New quest: "${newQ.title}"` });
         queueLevelUpMsg(`\u{1F4DC} New quest: "${newQ.title}"`, 4000);
+      }
+    }
+    const factionTaskTag = extractFactionTaskTag(response);
+    if (factionTaskTag?.title && factionTaskTag?.objective) {
+      const questId = `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const factionQ = {
+        id: questId, title: factionTaskTag.title, giver: u.faction || "Unknown faction",
+        giverLocation: u.location, objective: factionTaskTag.objective,
+        reward: factionTaskTag.reward || "Unknown", type: "faction", status: "active",
+        addedAt: new Date().toLocaleString(), notes: ""
+      };
+      const alreadyHas = (u.quests || []).some((q) => q.title.toLowerCase() === factionQ.title.toLowerCase());
+      if (!alreadyHas) {
+        u = { ...u, quests: [...(u.quests || []), factionQ] };
+        newLog.push({ type: "system", text: `\u269C\uFE0F Faction task: "${factionQ.title}"` });
+        queueLevelUpMsg(`\u269C\uFE0F Faction task: "${factionQ.title}"`, 4000);
       }
     }
     if (!["attack", "ability", "defend", "flee"].includes(cmdId)) {
@@ -6447,16 +6649,26 @@ function AethermoorRPG() {
       }
       if (act === "3" && updatedSeed.act1Complete && !updatedSeed.act2Complete) {
         updatedSeed = { ...updatedSeed, act2Complete: true, currentAct: 3 };
-        queueLevelUpMsg(`\u2694\uFE0F Main Quest Act III: The path to ${updatedSeed.villainName} opens.`, 6e3);
-        finalLog.push({ type: "system", text: `\u{1F4D6} Main Quest Act III \u2014 The confrontation approaches` });
+        queueLevelUpMsg(`\u2694\uFE0F Main Quest Act III: The stakes rise.`, 6e3);
+        finalLog.push({ type: "system", text: `\u{1F4D6} Main Quest Act III \u2014 The confrontation builds` });
       }
-      if ((act === "complete_ready" || act === "4") && updatedSeed.act2Complete && !updatedSeed.act3Complete) {
-        updatedSeed = { ...updatedSeed, act3Complete: true, currentAct: 4, finalBossEncounterReady: true };
-        queueLevelUpMsg(`\u2694\uFE0F Main Quest Act IV: Seek out ${updatedSeed.villainName} in ${updatedSeed.villainLair}.`, 7e3);
-        finalLog.push({ type: "system", text: `\u{1F4D6} Main Quest Act IV \u2014 Enter the lair` });
+      if (act === "4" && updatedSeed.act2Complete && !updatedSeed.act3Complete) {
+        updatedSeed = { ...updatedSeed, act3Complete: true, currentAct: 4 };
+        queueLevelUpMsg(`\u{1F494} Main Quest Act IV: The darkness peaks.`, 6e3);
+        finalLog.push({ type: "system", text: `\u{1F4D6} Main Quest Act IV \u2014 Betrayal and consequence` });
+      }
+      if (act === "5" && updatedSeed.act3Complete && !updatedSeed.act4Complete) {
+        updatedSeed = { ...updatedSeed, act4Complete: true, currentAct: 5 };
+        queueLevelUpMsg(`\u2694\uFE0F Main Quest Act V: The path to ${updatedSeed.villainName} is revealed.`, 7e3);
+        finalLog.push({ type: "system", text: `\u{1F4D6} Main Quest Act V \u2014 Final preparations` });
+      }
+      if ((act === "6" || act === "complete_ready") && updatedSeed.act4Complete && !updatedSeed.act5Complete) {
+        updatedSeed = { ...updatedSeed, act5Complete: true, currentAct: 6, finalBossEncounterReady: true };
+        queueLevelUpMsg(`\u{1F525} Main Quest Act VI: Enter ${updatedSeed.villainLair}.`, 8e3);
+        finalLog.push({ type: "system", text: `\u{1F4D6} Main Quest Act VI \u2014 The final confrontation` });
       }
       if (act === "complete" && !updatedSeed.mainQuestComplete) {
-        updatedSeed = { ...updatedSeed, act3Complete: true, mainQuestComplete: true, currentAct: 5 };
+        updatedSeed = { ...updatedSeed, act5Complete: true, mainQuestComplete: true, currentAct: 7 };
         u = { ...u, reputation: (u.reputation || 0) + 50, questsCompleted: (u.questsCompleted || 0) + 1 };
         queueLevelUpMsg(`\u{1F3C6} MAIN QUEST COMPLETE \u2014 ${updatedSeed.questTitle}!`, 1e4);
         finalLog.push({ type: "system", text: `\u{1F3C6} MAIN QUEST COMPLETE: ${updatedSeed.questTitle}` });
