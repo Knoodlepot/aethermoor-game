@@ -615,6 +615,10 @@ const COMBAT_LOOT_BY_TIER = {
   5: []
   // Tier 5 comes only from sets/quests — no random drops
 };
+const NPC_GIFT_ITEMS = [
+  "Health Potion", "Antidote", "Rations x3", "Travel Bread",
+  "Torch Bundle x5", "Rope", "Dagger", "Mana Potion", "Lockpick"
+];
 Object.assign(ITEM_STAT_BONUSES, TIERED_GEAR_BONUSES);
 const ENEMY_ARCHETYPES = {
   wolf: { icon: "\u{1F43A}", name: "Wolf", style: "pack_hunter", baseHp: 20, baseStr: 4, baseAgi: 6, baseDef: 1, xpMult: 1, goldMult: 0.5, lootTier: 1, locations: ["explore", "camp"] },
@@ -3595,8 +3599,17 @@ function QuestLogScreen({ player, onClose, onDismiss, T, tf, bf, worldSeed }) {
     if (tab === "dungeon" && !lbLoaded) {
       const load = async () => {
         try {
-          const raw = await storageGet("rpg-dungeon-lb").catch(() => null);
-          setLbData(raw ? JSON.parse(raw.value) : []);
+          const res  = await fetch(`${BACKEND_URL}/dungeon/leaderboard`);
+          const data = await res.json();
+          setLbData((data.entries || []).map(e => ({
+            name:     e.hero_name,
+            class:    e.hero_class,
+            level:    e.hero_level,
+            floor:    e.deepest_floor,
+            ngPlus:   e.ng_plus,
+            killedBy: null,
+            perks:    [],
+          })));
         } catch {
           setLbData([]);
         }
@@ -4912,6 +4925,12 @@ function AethermoorRPG() {
         }
         if (pRaw?.value && sRaw?.value) {
           const p    = JSON.parse(pRaw.value);
+          if (p.dungeon?.floor > 0 && getAuthToken()) {
+            fetch(`${BACKEND_URL}/dungeon/sync`, {
+              method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+              body: JSON.stringify({ claimedFloor: p.dungeon.floor }),
+            }).catch(() => {});
+          }
           const seed = JSON.parse(sRaw.value);
           const msgs = mRaw?.value ? JSON.parse(mRaw.value) : [];
           const narr = nRaw?.value || "";
@@ -5058,6 +5077,11 @@ function AethermoorRPG() {
     } catch {
       return null;
     }
+  }
+  function extractNpcGiftTag(text) {
+    const m = text.match(/\{"npcGift"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
   }
   function registerNpc(player2, npcData, currentLocation, currentAct) {
     const existing = (player2.knownNpcs || []).find((n) => n.name.toLowerCase() === npcData.name.toLowerCase());
@@ -5381,9 +5405,20 @@ function AethermoorRPG() {
     // Keep last 20 message pairs max to control API cost and context size
     const trimmedMsgs = messages.slice(-20);
     const newMsgs = [...trimmedMsgs, { role: "user", content: msg }];
+    const _npcCtx    = ["npc", "town"].includes(player.context);
+    const _begging   = /\b(give|spare|please|need|beg|lend|hand over)\b/i.test(msg);
+    const _giftChance = _npcCtx ? (_begging ? 0.20 : 0.08) : 0;
+    const _giftRoll  = _giftChance > 0 && Math.random() < _giftChance;
+    const _giftItem  = _giftRoll ? NPC_GIFT_ITEMS[Math.floor(Math.random() * NPC_GIFT_ITEMS.length)] : null;
     let response;
     try {
-      response = await callClaude(newMsgs, { player, worldSeed }, setTokens);
+      response = await callClaude(
+        newMsgs,
+        _giftRoll
+          ? { player: { ...player, npcGiftRoll: true, npcGiftItem: _giftItem }, worldSeed }
+          : { player, worldSeed },
+        setTokens
+      );
     } catch (err) {
       setNarrative("The world grows quiet. Something interrupted the story — please try again.");
       queueLevelUpMsg("\u26A0\uFE0F Connection error. Try again.", 5000);
@@ -5411,6 +5446,12 @@ function AethermoorRPG() {
     }
     if (npcUpdateTag) {
       u = registerNpc(u, npcUpdateTag, u.location, mqAct);
+    }
+    const giftTag = extractNpcGiftTag(response);
+    if (giftTag?.item) {
+      u = { ...u, inventory: [...u.inventory || [], giftTag.item] };
+      newLog.push({ type: "system", text: `\u{1F381} Received: ${giftTag.item}` });
+      queueLevelUpMsg(`\u{1F381} ${giftTag.item} added to your pack!`, 4000);
     }
     if (!["attack", "ability", "defend", "flee"].includes(cmdId)) {
       const heal = response.match(/(?:heal|restore|recover) (\d+) (?:HP|hit points)/i);
@@ -5460,6 +5501,12 @@ function AethermoorRPG() {
       setLog(deathLog);
       setMessages(finalMsgsD);
       await saveGame(u, worldSeed, finalMsgsD, prose, deathLog);
+      if (getAuthToken() && gravestone.dungeonFloor) {
+        fetch(`${BACKEND_URL}/dungeon/reset`, {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+          body: JSON.stringify({}),
+        }).catch(() => {});
+      }
       setIsLoading(false);
       return;
     }
@@ -5806,7 +5853,33 @@ function AethermoorRPG() {
       }
       const isEntering = cmdId === "dungeon" && !u.dungeon;
       const currentFloor = u.dungeon?.floor || 0;
-      const nextFloor = isEntering ? 1 : currentFloor + 1;
+      let nextFloor = isEntering ? 1 : currentFloor + 1;
+      // ── Server-authoritative floor validation (anti-cheat) ──────
+      if (getAuthToken()) {
+        try {
+          const _dsRes = await fetch(`${BACKEND_URL}/dungeon/descend`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+            body: JSON.stringify({
+              heroName:  (u.name  || "Adventurer").slice(0, 30),
+              heroClass: (u.class || "Warrior").slice(0, 20),
+              heroLevel: Math.max(1, Math.min(99, parseInt(u.level) || 1)),
+              ngPlus:    Math.max(0, Math.min(20, parseInt(u.ngPlusCount) || 0)),
+            }),
+          });
+          const _dsData = await _dsRes.json();
+          if (!_dsData.ok) {
+            newLog.push({ type: "system", text: `\u26D4 ${_dsData.message || "Could not descend \u2014 please try again."}` });
+            setLog(newLog);
+            setIsLoading(false);
+            return;
+          }
+          nextFloor = _dsData.floor;
+        } catch (_dsErr) {
+          console.warn("[Dungeon] Could not reach server for floor validation \u2014 proceeding offline.");
+        }
+      }
+      // ────────────────────────────────────────────────────────────
       const ngPlus = u.ngPlusCount || 0;
       const isEchoFloorNow = isEchoFloor(nextFloor);
       let echoEnemy = null;
@@ -5885,12 +5958,19 @@ function AethermoorRPG() {
     }
     if (cmdId === "ascend") {
       const dungeonLoot = u.dungeon?.loot || [];
+      const _ascendFromFloor = u.dungeon?.floor || 0;
       u = {
         ...u,
         context: "explore",
         inventory: [...u.inventory || [], ...dungeonLoot],
         dungeon: null
       };
+      if (getAuthToken() && _ascendFromFloor > 0) {
+        fetch(`${BACKEND_URL}/dungeon/reset`, {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+          body: JSON.stringify({}),
+        }).catch(() => {});
+      }
       if (dungeonLoot.length > 0) {
         newLog.push({ type: "system", text: `\u{1F392} Banked ${dungeonLoot.length} item${dungeonLoot.length !== 1 ? "s" : ""}: ${dungeonLoot.join(", ")}` });
         queueLevelUpMsg(`\u2705 Dungeon loot banked!`, 3e3);
