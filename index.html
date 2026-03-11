@@ -649,6 +649,20 @@ const ENEMY_TRAITS = [
   { id: "coward", label: "Coward", apply: (e) => e }
   // flees early
 ];
+const ENEMY_VARIANTS = [
+  { id: "feral", prefix: "Feral", hpMult: 0.9, strMult: 1.15, agiMult: 1.1, defMult: 0.9, xpMult: 1.05, goldMult: 0.9 },
+  { id: "ashen", prefix: "Ashen", hpMult: 0.95, strMult: 1.1, agiMult: 1, defMult: 1, xpMult: 1.05, goldMult: 1 },
+  { id: "frostbound", prefix: "Frostbound", hpMult: 1.1, strMult: 1, agiMult: 0.95, defMult: 1.1, xpMult: 1.08, goldMult: 1.05 },
+  { id: "gloom", prefix: "Gloom", hpMult: 1, strMult: 1.05, agiMult: 1.15, defMult: 0.95, xpMult: 1.08, goldMult: 1.1 },
+  { id: "ironhide", prefix: "Ironhide", hpMult: 1.1, strMult: 1, agiMult: 0.9, defMult: 1.25, xpMult: 1.1, goldMult: 1.05 },
+  { id: "bloodfang", prefix: "Bloodfang", hpMult: 0.95, strMult: 1.2, agiMult: 1.05, defMult: 0.9, xpMult: 1.1, goldMult: 0.95 },
+  { id: "storm", prefix: "Storm", hpMult: 0.95, strMult: 1.05, agiMult: 1.2, defMult: 0.95, xpMult: 1.1, goldMult: 1.05 },
+  { id: "voidtouched", prefix: "Voidtouched", hpMult: 1.05, strMult: 1.1, agiMult: 1.05, defMult: 1, xpMult: 1.12, goldMult: 1.1 },
+  { id: "sunscorched", prefix: "Sunscorched", hpMult: 1, strMult: 1.1, agiMult: 1, defMult: 1, xpMult: 1.08, goldMult: 1.15 },
+  { id: "nightstalker", prefix: "Nightstalker", hpMult: 0.9, strMult: 1.05, agiMult: 1.25, defMult: 0.9, xpMult: 1.12, goldMult: 1.1 },
+  { id: "ancient", prefix: "Ancient", hpMult: 1.2, strMult: 1.1, agiMult: 0.9, defMult: 1.2, xpMult: 1.15, goldMult: 1.2 },
+  { id: "warlord", prefix: "Warlord", hpMult: 1.15, strMult: 1.2, agiMult: 0.95, defMult: 1.1, xpMult: 1.18, goldMult: 1.2 }
+];
 const ARMOUR_DEF = {
   "Leather Armour": 3,
   "Chainmail": 6,
@@ -854,7 +868,9 @@ function generateEnemy(playerLevel, context, location, forcedArchetype, ngPlusCo
     if (forcedArchetype) return id === forcedArchetype;
     return true;
   });
-  const [archetypeId, archetype] = eligible[Math.floor(Math.random() * eligible.length)];
+  const [baseArchetypeId, archetype] = eligible[Math.floor(Math.random() * eligible.length)];
+  const variant = ENEMY_VARIANTS[Math.floor(Math.random() * ENEMY_VARIANTS.length)];
+  const archetypeId = `${baseArchetypeId}:${variant.id}`;
   const tierWeights = playerLevel <= 4 ? [50, 40, 10, 0] : playerLevel <= 9 ? [20, 50, 25, 5] : playerLevel <= 14 ? [10, 40, 40, 10] : playerLevel <= 18 ? [5, 25, 50, 20] : [0, 10, 50, 40];
   const tierRoll = Math.random() * 100;
   let cumul = 0, tierIdx = 0;
@@ -873,19 +889,22 @@ function generateEnemy(playerLevel, context, location, forcedArchetype, ngPlusCo
   const variance = 0.85 + Math.random() * 0.3;
   const mult = tierData.mult * levelScale * variance;
   let enemy = {
+    baseArchetypeId,
     archetypeId,
+    variantId: variant.id,
+    variantPrefix: variant.prefix,
     icon: archetype.icon,
     style: archetype.style,
     tier: tierData.tier,
     tierLabel: tierData.label,
     traits: traits.map((t) => t.id),
     traitLabels: traits.map((t) => t.label),
-    hp: Math.round(archetype.baseHp * mult),
-    str: Math.round(archetype.baseStr * mult),
-    agi: Math.round(archetype.baseAgi * mult),
-    def: Math.round(archetype.baseDef * mult),
-    xpReward: Math.round(30 * archetype.xpMult * tierData.mult * levelScale),
-    goldReward: Math.round(10 * archetype.goldMult * tierData.mult * levelScale),
+    hp: Math.round(archetype.baseHp * mult * variant.hpMult),
+    str: Math.round(archetype.baseStr * mult * variant.strMult),
+    agi: Math.round(archetype.baseAgi * mult * variant.agiMult),
+    def: Math.round(archetype.baseDef * mult * variant.defMult),
+    xpReward: Math.round(30 * archetype.xpMult * tierData.mult * levelScale * variant.xpMult),
+    goldReward: Math.round(10 * archetype.goldMult * tierData.mult * levelScale * variant.goldMult),
     lootTier: archetype.lootTier,
     turnCount: 0,
     statusEffects: [],
@@ -956,7 +975,7 @@ function calcPlayerAttack(player, enemy, cmdId, isDefending) {
     } else if (cls === "Cleric") {
       abilityName = "Divine Strike";
       baseDmg = wil * 2 + str + d6();
-      if (["skeleton", "zombie"].includes(enemy.archetypeId)) statusApplied = "stunned";
+      if (["skeleton", "zombie"].includes(enemy.baseArchetypeId || enemy.archetypeId)) statusApplied = "stunned";
     }
   } else if (cmdId === "defend") {
     baseDmg = Math.max(str, agi) + weapBonus + d6();
@@ -2007,6 +2026,8 @@ const INIT_PLAYER = (name, cls) => ({
   // Day 1 of the adventure
   scheduledEvents: [],
   // [{npcName, location, day, hour, description}]
+  bestiary: [],
+  // [{archetypeId, name, icon, tier, timesKilled, firstKilledDay, lastKilledDay}]
 });
 // ── Backend URL ──────────────────────────────────────────────────────────
 // Live Railway server — update this if the backend URL ever changes.
@@ -3761,6 +3782,121 @@ function InventoryScreen({ player, onEquip, onUnequip, onUse, onDrop, onClose, T
     })(), /* @__PURE__ */ React.createElement(ItemActions, { itemName: item, isEquipped: false }))));
   }))));
 }
+function BestiaryScreen({ player, onClose, T, tf, bf }) {
+  const [tab, setTab] = useState("all");
+  const [selected, setSelected] = useState(null);
+  const allEntries = (player.bestiary || []).slice().sort((a, b) => b.timesKilled - a.timesKilled);
+  const totalKills = allEntries.reduce((s, b) => s + b.timesKilled, 0);
+  const tabs = ["all", "minion", "standard", "veteran", "boss"];
+  const tabLabels = { all: "⚔️ All", minion: "💀 Minion", standard: "🗡️ Standard", veteran: "🛡️ Veteran", boss: "👑 Boss" };
+  const shown = tab === "all" ? allEntries : allEntries.filter(b => (b.tier || "").toLowerCase() === tab);
+  const tierColor = { minion: "#808080", standard: "#60a060", veteran: "#c0a030", boss: "#c04040" };
+  return /* @__PURE__ */ React.createElement("div", { style: { ...(bf||{}), position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
+    /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 640, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px #00000099" } },
+      /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } },
+        /* @__PURE__ */ React.createElement("div", null,
+          /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "📖 BESTIARY"),
+          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, totalKills, " total kills · ", allEntries.length, " enemy types discovered")
+        ),
+        /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "✕")
+      ),
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", borderBottom: `1px solid ${T.border}`, flexShrink: 0, overflowX: "auto" } },
+        tabs.map(id => /* @__PURE__ */ React.createElement("button", {
+          key: id,
+          onClick: () => { setTab(id); setSelected(null); },
+          style: { flex: 1, minWidth: 60, background: tab === id ? T.selectedBg : "transparent", border: "none", borderBottom: `2px solid ${tab === id ? T.accent : "transparent"}`, color: tab === id ? T.gold : T.textMuted, padding: "10px 8px", cursor: "pointer", fontSize: 11, ...tf, letterSpacing: 1, transition: "all 0.2s", whiteSpace: "nowrap" }
+        }, tabLabels[id]))
+      ),
+      /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+        shown.length === 0
+          ? /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center", color: T.textFaint, fontSize: 14, fontStyle: "italic" } }, allEntries.length === 0 ? "No enemies recorded yet — venture out and slay something." : "No enemies of this type recorded yet.")
+          : shown.map((b, i) => /* @__PURE__ */ React.createElement("div", {
+              key: b.archetypeId || i,
+              onClick: () => setSelected(selected?.archetypeId === b.archetypeId ? null : b),
+              style: { padding: "12px 16px", borderBottom: `1px solid ${T.border}`, cursor: "pointer", background: selected?.archetypeId === b.archetypeId ? T.selectedBg : "transparent", transition: "background 0.15s" }
+            },
+            /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+              /* @__PURE__ */ React.createElement("span", { style: { fontSize: 22, lineHeight: 1 } }, b.icon || "⚔️"),
+              /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } },
+                /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                  /* @__PURE__ */ React.createElement("span", { style: { ...tf, color: T.text, fontSize: 13 } }, b.name || b.archetypeId),
+                  /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, ...tf, color: tierColor[b.tier?.toLowerCase()] || T.textMuted, border: `1px solid ${tierColor[b.tier?.toLowerCase()] || T.border}44`, padding: "1px 5px", letterSpacing: 1 } }, (b.tier || "unknown").toUpperCase())
+                ),
+                /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, "First encountered Day ", b.firstKilledDay || "?")
+              ),
+              /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } },
+                /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 18 } }, "×", b.timesKilled),
+                /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textFaint } }, "kills")
+              )
+            ),
+            selected?.archetypeId === b.archetypeId && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 20, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}44`, paddingLeft: 32 } },
+              /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textFaint } }, "📋 Type: ", b.archetypeId),
+              /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textFaint } }, "📅 Last slain: Day ", b.lastKilledDay || "?")
+            )
+          ))
+      )
+    )
+  );
+}
+const PATCH_NOTES_VERSION = "0.2.0";
+const PATCH_NOTES_TITLE = "Bestiary & Cloud Saves";
+const PATCH_NOTES_SECTIONS = [
+  {
+    title: "Added",
+    items: [
+      "Bestiary with kill tracking, type discovery, and detail expansion.",
+      "Cloud save endpoints with authenticated upload/download.",
+      "Enemy variant system for 100+ distinct enemy-type discoveries."
+    ]
+  },
+  {
+    title: "Changed",
+    items: [
+      "Game load now checks cloud save first when signed in.",
+      "DM prompt now includes kill history summary when available."
+    ]
+  },
+  {
+    title: "Fixed",
+    items: [
+      "Undead stun interactions remain correct with enemy variants."
+    ]
+  }
+];
+function buildDiscordPatchNotes() {
+  const lines = [`**Aethermoor Patch v${PATCH_NOTES_VERSION} — ${PATCH_NOTES_TITLE}**`, ""];
+  for (const sec of PATCH_NOTES_SECTIONS) {
+    lines.push(`__${sec.title}__`);
+    for (const item of sec.items) lines.push(`• ${item}`);
+    lines.push("");
+  }
+  return lines.join("\n").trim();
+}
+function PatchNotesScreen({ onClose, onCopyDiscord, onPostDiscord, T, tf, bf }) {
+  return /* @__PURE__ */ React.createElement("div", { style: { ...(bf||{}), position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
+    /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 700, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px #00000099" } },
+      /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
+        /* @__PURE__ */ React.createElement("div", null,
+          /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "📝 PATCH NOTES"),
+          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, "v", PATCH_NOTES_VERSION, " · ", PATCH_NOTES_TITLE)
+        ),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } },
+          /* @__PURE__ */ React.createElement("button", { onClick: onCopyDiscord, style: { background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 10px", cursor: "pointer", fontSize: 10, ...tf, letterSpacing: 1 } }, "📣 Copy Discord"),
+          /* @__PURE__ */ React.createElement("button", { onClick: onPostDiscord, style: { background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 10px", cursor: "pointer", fontSize: 10, ...tf, letterSpacing: 1 } }, "🚀 Post Discord"),
+          /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "✕")
+        )
+      ),
+      /* @__PURE__ */ React.createElement("div", { style: { padding: 16, overflowY: "auto" } },
+        PATCH_NOTES_SECTIONS.map((sec) => /* @__PURE__ */ React.createElement("div", { key: sec.title, style: { marginBottom: 16 } },
+          /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 12, letterSpacing: 1, marginBottom: 6 } }, sec.title.toUpperCase()),
+          /* @__PURE__ */ React.createElement("ul", { style: { margin: 0, paddingLeft: 20 } },
+            sec.items.map((item, i) => /* @__PURE__ */ React.createElement("li", { key: i, style: { marginBottom: 6, color: T.text, fontSize: 14, lineHeight: 1.5 } }, item))
+          )
+        ))
+      )
+    )
+  );
+}
 function QuestLogScreen({ player, onClose, onDismiss, T, tf, bf, worldSeed }) {
   const [tab, setTab] = useState("active");
   const [selected, setSelected] = useState(null);
@@ -5083,6 +5219,8 @@ function AethermoorRPG() {
   const [showStandings, setShowStandings] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [showQuestLog, setShowQuestLog] = useState(false);
+  const [showBestiary, setShowBestiary] = useState(false);
+  const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [shopStockKey, setShopStockKey] = useState(0);
@@ -5102,6 +5240,33 @@ function AethermoorRPG() {
       try {
         const theme = await storageGet("rpg-theme").catch(() => null);
         if (theme?.value) setThemeKey(theme.value);
+        // Try cloud save first if authenticated — server is the source of truth
+        const _initToken = getAuthToken();
+        if (_initToken) {
+          try {
+            const cloudRes = await fetch(`${BACKEND_URL}/save`, {
+              headers: { "Authorization": `Bearer ${_initToken}` }
+            });
+            if (cloudRes.ok) {
+              const data = await cloudRes.json();
+              const p    = JSON.parse(data.player_json);
+              const seed = JSON.parse(data.seed_json);
+              const msgs = data.messages_json ? JSON.parse(data.messages_json) : [];
+              const narr = data.narrative || "";
+              const lg   = data.log_json   ? JSON.parse(data.log_json) : [];
+              if (p.dungeon?.floor > 0) {
+                fetch(`${BACKEND_URL}/dungeon/sync`, {
+                  method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${_initToken}` },
+                  body: JSON.stringify({ claimedFloor: p.dungeon.floor }),
+                }).catch(() => {});
+              }
+              setPlayer(p); setWorldSeed(seed); setMessages(msgs); setNarrative(narr); setLog(lg);
+              setScreen("game");
+              return;
+            }
+          } catch {}
+          // Server unavailable or no cloud save — fall through to localStorage
+        }
         const pRaw  = await storageGet("rpg-player").catch(() => null);
         const sRaw  = await storageGet("rpg-seed").catch(() => null);
         const mRaw  = await storageGet("rpg-messages").catch(() => null);
@@ -5182,6 +5347,21 @@ function AethermoorRPG() {
       // Save failed — warn the player so they know progress may be lost
       queueLevelUpMsg("\u26A0\uFE0F Save failed — progress may not be stored. Try refreshing.", 7000);
     }
+    // Cloud save — fire-and-forget if authenticated; localStorage always written first
+    const _saveToken = getAuthToken();
+    if (_saveToken) {
+      fetch(`${BACKEND_URL}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${_saveToken}` },
+        body: JSON.stringify({
+          player_json:   JSON.stringify(p),
+          seed_json:     JSON.stringify(seed),
+          messages_json: JSON.stringify((msgs || []).slice(-20)),
+          narrative:     narr || "",
+          log_json:      JSON.stringify((lg || []).slice(-60))
+        })
+      }).catch(() => {}); // silent fail
+    }
     if ((p.deepestFloor || 0) > 0) {
       try {
         const raw = await storageGet("rpg-dungeon-lb").catch(() => null);
@@ -5218,6 +5398,39 @@ function AethermoorRPG() {
   function queueLevelUpMsg(msg, duration = 5e3) {
     levelUpQueue.current.push({ msg, duration });
     if (!levelUpTimer.current) drainLevelUpQueue();
+  }
+  function handleCopyPatchNotes() {
+    navigator.clipboard.writeText(buildDiscordPatchNotes()).then(() => {
+      queueLevelUpMsg("📣 Patch notes copied for Discord.", 3500);
+    }).catch(() => {
+      queueLevelUpMsg("⚠️ Could not copy patch notes.", 3500);
+    });
+  }
+  async function handlePostPatchNotes() {
+    const webhookUrl = window.prompt("Paste your Discord webhook URL:");
+    if (!webhookUrl) return;
+    const cleanUrl = webhookUrl.trim();
+    if (!/^https:\/\/(canary\.|ptb\.)?discord\.com\/api\/webhooks\/.+/i.test(cleanUrl)) {
+      queueLevelUpMsg("⚠️ Invalid Discord webhook URL.", 4000);
+      return;
+    }
+    try {
+      const res = await fetch(cleanUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "Aethermoor Patch Bot",
+          content: buildDiscordPatchNotes()
+        })
+      });
+      if (!res.ok) {
+        queueLevelUpMsg(`⚠️ Discord post failed (${res.status}).`, 5000);
+        return;
+      }
+      queueLevelUpMsg("🚀 Patch notes posted to Discord.", 4000);
+    } catch {
+      queueLevelUpMsg("⚠️ Discord post failed (network/CORS).", 5000);
+    }
   }
   function drainLevelUpQueue() {
     if (levelUpQueue.current.length === 0) {
@@ -5894,15 +6107,19 @@ function AethermoorRPG() {
         } else if (bossType === "lieutenant" && mq2) {
           namePrompt = `Name the villain's lieutenant for this encounter. Villain: "${mq2.villainName}" (${mq2.villainType}). Template: ${mq2.templateTitle}. Enemy archetype: ${enemy.archetypeId}. Player location: ${u.location}. Reply ONLY with JSON: {"name":"<lieutenant's specific name \u2014 e.g. Malachar's Enforcer, The Pale Captain>","description":"<one sentence about who they are and what they serve>"}`;
         } else {
-          namePrompt = `Name this enemy for the player's current location (${u.location}): archetype=${enemy.archetypeId}, tier=${enemy.tier}, traits=${enemy.traitLabels?.join(",")}, style=${enemy.style}. Reply with ONLY a JSON object: {"name":"<specific name>","description":"<one atmospheric sentence>"}`;
+          namePrompt = `Name this enemy for the player's current location (${u.location}): archetype=${enemy.baseArchetypeId || enemy.archetypeId}, variant=${enemy.variantId || "none"}, tier=${enemy.tier}, traits=${enemy.traitLabels?.join(",")}, style=${enemy.style}. Reply with ONLY a JSON object: {"name":"<specific name>","description":"<one atmospheric sentence>"}`;
         }
         try {
           const nameRes = await callClaude([{ role: "user", content: namePrompt }], "You name enemies for a fantasy RPG. Reply only with valid JSON, no markdown.");
           const nameData = JSON.parse(nameRes.replace(/```json|```/g, "").trim());
-          enemy.name = nameData.name || enemy.archetypeId;
+          enemy.name = nameData.name || `${enemy.variantPrefix ? enemy.variantPrefix + " " : ""}${ENEMY_ARCHETYPES[enemy.baseArchetypeId || enemy.archetypeId]?.name || (enemy.baseArchetypeId || enemy.archetypeId)}`;
           enemy.description = nameData.description || "";
         } catch (e) {
-          enemy.name = bossType === "final" && worldSeed ? worldSeed.villainName : `${enemy.tierLabel ? enemy.tierLabel + " " : ""}${ENEMY_ARCHETYPES[enemy.archetypeId]?.name || enemy.archetypeId}`;
+          const baseArch = enemy.baseArchetypeId || enemy.archetypeId;
+          const fallbackBaseName = ENEMY_ARCHETYPES[baseArch]?.name || baseArch;
+          enemy.name = bossType === "final" && worldSeed
+            ? worldSeed.villainName
+            : `${enemy.tierLabel ? enemy.tierLabel + " " : ""}${enemy.variantPrefix ? enemy.variantPrefix + " " : ""}${fallbackBaseName}`;
         }
         if (bossType === "final") {
           queueLevelUpMsg(`\u{1F480} ${enemy.name} \u2014 THE FINAL CONFRONTATION`, 8e3);
@@ -6001,6 +6218,26 @@ function AethermoorRPG() {
           u = grantFactionXP(u, myClassFaction, 15);
           u = { ...u, reputation: (u.reputation || 0) + 3 };
           u = grantLocationXP(u, u.location, 8);
+          // Bestiary: record or increment kill count
+          const bKey = updatedEnemy.archetypeId;
+          const bExisting = (u.bestiary || []).find(b => b.archetypeId === bKey);
+          if (bExisting) {
+            u = { ...u, bestiary: (u.bestiary || []).map(b =>
+              b.archetypeId === bKey
+                ? { ...b, timesKilled: b.timesKilled + 1, lastKilledDay: u.gameDay }
+                : b
+            )};
+          } else {
+            u = { ...u, bestiary: [...(u.bestiary || []), {
+              archetypeId: bKey,
+              name: updatedEnemy.name,
+              icon: updatedEnemy.icon,
+              tier: updatedEnemy.tier,
+              timesKilled: 1,
+              firstKilledDay: u.gameDay,
+              lastKilledDay: u.gameDay
+            }]};
+          }
           if (updatedEnemy.isFinalBoss) {
             const updSeed = {
               ...worldSeed,
@@ -7615,6 +7852,8 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
     }
   },
     ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F6D2} Shop"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F392} Gear"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\u{1F4DC} Quests", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u2B50 Rep"),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBestiary(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\u{1F4D6} Bestiary", (player?.bestiary || []).length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#c04040", color: "#fff", borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.bestiary || []).length)),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPatchNotes(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F4DD} Patch"),
       /* @__PURE__ */ React.createElement("button", {
         onClick: () => player?.location === "Aethermoor Capital" && !player?.dungeon ? setDungeonWarningOpen(true) : null,
         title: player?.location === "Aethermoor Capital" ? (player?.dungeon ? "Already in the dungeon" : "Enter the Dungeon of Echoes") : "Travel to Aethermoor Capital to access the Dungeon of Echoes",
@@ -7664,7 +7903,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
       onCancel: () => setShowNGPlusScreen(false),
       onConfirm: (ngData) => clearSave(ngData)
     }
-  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }));
+  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), onCopyDiscord: handleCopyPatchNotes, onPostDiscord: handlePostPatchNotes, T, tf, bf }));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AethermoorRPG));
 </script>
