@@ -394,7 +394,8 @@ const ABILITY_INFO = {
   "Arcane Insight": { icon: "\u{1F52E}", type: "Passive", desc: "You sense magical auras, identify enchanted items, and read ancient runes automatically." },
   "Forbidden Knowledge": { icon: "\u{1F4D6}", type: "Passive", desc: "Ancient secrets fuel your power. All INT-based actions gain a hidden +4 bonus." },
   "Sea Legs": { icon: "\u2693", type: "Passive", desc: "You never get lost on water or coasts and coastal travel costs no time." },
-  "Corsair's Gambit": { icon: "\u{1F3F4}", type: "Combat", desc: "A daring all-or-nothing strike \u2014 either deal massive damage or leave yourself open." }
+  "Corsair's Gambit": { icon: "\u{1F3F4}", type: "Combat", desc: "A daring all-or-nothing strike \u2014 either deal massive damage or leave yourself open." },
+  "Spirit Sight": { icon: "\uD83D\uDC41\uFE0F", type: "Passive", desc: "Sanam's gift opens your inner eye to what lingers between worlds. Spirits and shades may now choose to speak with you. Against undead and spectral enemies, your WIL is treated as 4 points higher. Some truths only the dead know." }
 };
 const ITEM_INFO = {
   "health potion": { icon: "\u{1F9EA}", type: "Consumable", desc: "A vial of crimson liquid brewed from healing herbs. Restores a portion of your HP when drunk. Best saved for desperate moments." },
@@ -430,7 +431,10 @@ const ITEM_INFO = {
   "copper ore": { icon: "\u26CF\uFE0F", type: "Resource", desc: "A common ore used in tools, fittings and trade goods." },
   "silver ore": { icon: "\u26CF\uFE0F", type: "Resource", desc: "Valuable ore prized by smiths and enchanters." },
   "gem": { icon: "\u{1F48E}", type: "Treasure", desc: "A faceted gemstone that catches the light. Worth a fair sum to the right merchant." },
-  "arrow": { icon: "\u{1F3F9}", type: "Ammunition", desc: "Fletched hunting arrows. Required for ranged combat with a bow." }
+  "arrow": { icon: "\u{1F3F9}", type: "Ammunition", desc: "Fletched hunting arrows. Required for ranged combat with a bow." },
+  "herb broth": { icon: "\u{1F375}", type: "Food", desc: "A camp broth infused with medicinal herbs. Heals and cleanses poison." },
+  "mushroom stew": { icon: "\u{1F372}", type: "Food", desc: "A thick earthy stew of rare mushrooms. Powerful restoration." },
+  "ranger's pottage": { icon: "\u{1F35B}", type: "Food", desc: "A dense wild meal from the best the land offers. Fully restores HP." }
 };
 function getItemInfo(itemName) {
   const cleaned = itemName.toLowerCase().replace(/x\d+$/, "").replace(/\s+x\s*\d+$/, "").trim();
@@ -514,7 +518,10 @@ const CONSUMABLE_EFFECTS = {
   "healing herb": { hp: 5, msg: "You chew the Healing Herb. +5 HP." },
   "scroll of fire": { msg: "You read the Scroll of Fire. It crumbles to ash \u2014 the spell is cast!" },
   "scroll of mending": { hp: 40, msg: "You read the Scroll of Mending. +40 HP." },
-  "scroll of lightning": { msg: "You read the Scroll of Lightning. It crumbles to ash \u2014 the spell is cast!" }
+  "scroll of lightning": { msg: "You read the Scroll of Lightning. It crumbles to ash \u2014 the spell is cast!" },
+  "herb broth": { hp: 25, clearPoison: true, msg: "You drink the Herb Broth. +25 HP. Poison cleansed." },
+  "mushroom stew": { hp: 45, msg: "You eat the Mushroom Stew. +45 HP." },
+  "ranger's pottage": { hpFull: true, msg: "You eat the Ranger's Pottage. HP fully restored." }
 };
 function getConsumableEffect(itemName) {
   const cleaned = itemName.toLowerCase().replace(/\s*x\s*\d+\s*$/, "").trim();
@@ -2116,6 +2123,8 @@ const INIT_PLAYER = (name, cls) => ({
   // skill IDs unlocked from the skill tree
   skillPoints: 0,
   // available skill points (earned on level-up)
+  wantedLevel: 0,
+  // 0=clean 1=bounty hunters 2=guards hostile 3=faction hostile
   professions: {
     survival: { level: 1, xp: 0 },
     social: { level: 1, xp: 0 },
@@ -2947,7 +2956,9 @@ function generateMainQuestSeed() {
     lieutenantDefeated: false,
     finalBossDefeated: false,
     lieutenantEncounterReady: false,
-    finalBossEncounterReady: false
+    finalBossEncounterReady: false,
+    villainAllied: false,
+    worldEvents: {}
   };
 }
 async function generateWorldSeed() {
@@ -3347,6 +3358,47 @@ function removeOneRation(inventory) {
     }
   } else {
     inv.splice(idx, 1);
+  }
+  return inv;
+}
+function countItem(inventory, name) {
+  const key = name.toLowerCase().trim();
+  let total = 0;
+  for (const entry of (inventory || [])) {
+    const base = entry.replace(/\s*x\s*\d+\s*$/i, "").trim().toLowerCase();
+    if (base === key) {
+      const m = entry.match(/x(\d+)$/i);
+      total += m ? parseInt(m[1]) : 1;
+    }
+  }
+  return total;
+}
+function removeIngredients(inventory, ingredients) {
+  let inv = [...(inventory || [])];
+  for (const { item, qty } of ingredients) {
+    let remaining = qty;
+    const key = item.toLowerCase().trim();
+    while (remaining > 0) {
+      const idx = inv.findIndex(e => e.replace(/\s*x\s*\d+\s*$/i, "").trim().toLowerCase() === key);
+      if (idx === -1) break;
+      const m = inv[idx].match(/x(\d+)$/i);
+      const have = m ? parseInt(m[1]) : 1;
+      if (have > remaining) { inv[idx] = item + " x" + (have - remaining); remaining = 0; }
+      else { inv.splice(idx, 1); remaining -= have; }
+    }
+  }
+  return inv;
+}
+function addCraftResult(inventory, name, qty) {
+  const inv = [...(inventory || [])];
+  const key = name.toLowerCase().trim();
+  const idx = inv.findIndex(e => e.replace(/\s*x\s*\d+\s*$/i, "").trim().toLowerCase() === key);
+  if (idx !== -1) {
+    const m = inv[idx].match(/x(\d+)$/i);
+    const existing = m ? parseInt(m[1]) : 1;
+    inv[idx] = name + " x" + (existing + qty);
+  } else {
+    inv.push(qty > 1 ? name + " x" + qty : name);
   }
   return inv;
 }
@@ -3944,6 +3996,98 @@ function InventoryScreen({ player, onEquip, onUnequip, onUse, onDrop, onClose, T
       return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.gold, marginTop: 2 } }, bonus ? Object.entries(bonus).map(([s, v]) => `+${v} ${s.toUpperCase()}`).join("  ") : "", setInfo ? /* @__PURE__ */ React.createElement("span", { style: { color: T.accent, marginLeft: 6 } }, "Part of ", setInfo.set.name) : null);
     })(), /* @__PURE__ */ React.createElement(ItemActions, { itemName: item, isEquipped: false }))));
   }))));
+}
+const RECIPES = [
+  // ---- ALCHEMY ----
+  { id: "healing_salve", type: "alchemy", name: "Healing Salve", icon: "\uD83E\uDE79", ingredients: [{ item: "Medicinal Herb", qty: 1 }, { item: "Healing Herb", qty: 1 }], result: "Health Potion", resultQty: 1, minCraftLevel: 1, desc: "A simple salve brewed from common herbs.", xpReward: 15 },
+  { id: "healing_potion_2", type: "alchemy", name: "Healing Potion x2", icon: "\uD83E\uDDEA", ingredients: [{ item: "Healing Herb", qty: 2 }, { item: "Nightbloom", qty: 1 }], result: "Health Potion", resultQty: 2, minCraftLevel: 1, desc: "A double batch of restorative draught.", xpReward: 25 },
+  { id: "antidote_2", type: "alchemy", name: "Antidote x2", icon: "\uD83D\uDC9A", ingredients: [{ item: "Medicinal Herb", qty: 2 }, { item: "Bitter Root", qty: 1 }], result: "Antidote", resultQty: 2, minCraftLevel: 2, desc: "Purges poison from body and blood.", xpReward: 30 },
+  { id: "strong_health_potion", type: "alchemy", name: "Strong Health Potion", icon: "\uD83D\uDC9B", ingredients: [{ item: "Healing Herb", qty: 2 }, { item: "Nightbloom", qty: 2 }, { item: "Glowcap Mushroom", qty: 1 }], result: "Strong Health Potion", resultQty: 1, minCraftLevel: 3, desc: "A potent brew of rare herbs and mushroom extract.", xpReward: 45 },
+  { id: "elixir_of_vigour", type: "alchemy", name: "Elixir of Vigour", icon: "\u2728", ingredients: [{ item: "Healing Herb", qty: 3 }, { item: "Glowcap Mushroom", qty: 2 }, { item: "Starweed", qty: 1 }], result: "Elixir of Vigour", resultQty: 1, minCraftLevel: 4, desc: "Fully restores HP and grants temporary resilience.", xpReward: 60 },
+  // ---- COOKING ----
+  { id: "iron_rations", type: "cooking", name: "Iron Rations", icon: "\uD83E\uDED8", ingredients: [{ item: "Rations", qty: 1 }, { item: "Medicinal Herb", qty: 1 }], result: "Iron Rations", resultQty: 2, minCraftLevel: 1, desc: "Preserved trail food — last longer on the road.", xpReward: 15 },
+  { id: "herb_broth", type: "cooking", name: "Herb Broth", icon: "\uD83C\uDF75", ingredients: [{ item: "Rations", qty: 1 }, { item: "Medicinal Herb", qty: 2 }], result: "herb broth", resultQty: 1, minCraftLevel: 1, desc: "A nourishing camp broth. Heals and cleanses poison.", xpReward: 20 },
+  { id: "mushroom_stew", type: "cooking", name: "Mushroom Stew", icon: "\uD83C\uDF72", ingredients: [{ item: "Rations", qty: 1 }, { item: "Glowcap Mushroom", qty: 2 }], result: "mushroom stew", resultQty: 1, minCraftLevel: 2, desc: "Thick, earthy, and powerfully restorative.", xpReward: 30 },
+  { id: "rangers_pottage", type: "cooking", name: "Ranger's Pottage", icon: "\uD83C\uDF5B", ingredients: [{ item: "Rations", qty: 2 }, { item: "Healing Herb", qty: 1 }, { item: "Glowcap Mushroom", qty: 1 }], result: "ranger's pottage", resultQty: 1, minCraftLevel: 3, desc: "A hearty camp meal that fully restores HP.", xpReward: 45 },
+  // ---- SMITHING ----
+  { id: "iron_sword", type: "smithing", name: "Iron Sword", icon: "\u2694\uFE0F", ingredients: [{ item: "Iron Ore", qty: 3 }, { item: "Firewood", qty: 1 }], result: "Iron Sword", resultQty: 1, minCraftLevel: 2, locationTypeRequired: ["town", "city", "capital"], desc: "A sturdy blade forged at a town smithy.", xpReward: 40 },
+  { id: "iron_shield", type: "smithing", name: "Iron Shield", icon: "\uD83D\uDEE1\uFE0F", ingredients: [{ item: "Iron Ore", qty: 3 }, { item: "Timber", qty: 1 }], result: "Iron Shield", resultQty: 1, minCraftLevel: 2, locationTypeRequired: ["town", "city", "capital"], desc: "A solid kite shield, good against most foes.", xpReward: 40 },
+  { id: "chainmail", type: "smithing", name: "Chainmail", icon: "\uD83E\uDDF2", ingredients: [{ item: "Iron Ore", qty: 5 }, { item: "Leather Scraps", qty: 2 }], result: "Chainmail", resultQty: 1, minCraftLevel: 3, locationTypeRequired: ["town", "city", "capital"], desc: "Interlocked iron rings, flexible and tough.", xpReward: 55 },
+  { id: "ring_of_strength", type: "smithing", name: "Ring of Strength", icon: "\uD83D\uDC8D", ingredients: [{ item: "Iron Ore", qty: 2 }, { item: "Ember Crystal", qty: 1 }], result: "Ring of Strength", resultQty: 1, minCraftLevel: 3, locationTypeRequired: ["town", "city", "capital"], desc: "A ring imbued with brute force — +2 STR.", xpReward: 50 },
+  { id: "steel_sword", type: "smithing", name: "Steel Sword", icon: "\u2694\uFE0F", ingredients: [{ item: "Iron Ore", qty: 4 }, { item: "Shadow Ore", qty: 2 }, { item: "Firewood", qty: 2 }], result: "Steel Sword", resultQty: 1, minCraftLevel: 4, locationTypeRequired: ["town", "city", "capital"], desc: "A masterwork blade, sharper and more durable.", xpReward: 70 },
+  // ---- ENCHANTING ----
+  { id: "scroll_of_mending", type: "enchanting", name: "Scroll of Mending", icon: "\uD83D\uDCDC", ingredients: [{ item: "Iron Ore", qty: 1 }, { item: "Glowcap Mushroom", qty: 2 }], result: "Scroll of Mending", resultQty: 1, minCraftLevel: 2, locationTypeRequired: ["city", "capital"], desc: "A healing scroll charged with restorative energy.", xpReward: 35 },
+  { id: "scroll_of_fire", type: "enchanting", name: "Scroll of Fire", icon: "\uD83D\uDD25", ingredients: [{ item: "Iron Ore", qty: 1 }, { item: "Ember Crystal", qty: 1 }, { item: "Glowcap Mushroom", qty: 1 }], result: "Scroll of Fire", resultQty: 1, minCraftLevel: 2, locationTypeRequired: ["city", "capital"], desc: "Unleashes a torrent of flame in battle.", xpReward: 35 },
+  { id: "scroll_of_lightning", type: "enchanting", name: "Scroll of Lightning", icon: "\u26A1", ingredients: [{ item: "Iron Ore", qty: 2 }, { item: "Ember Crystal", qty: 1 }, { item: "Moonpetal", qty: 1 }], result: "Scroll of Lightning", resultQty: 1, minCraftLevel: 3, locationTypeRequired: ["city", "capital"], desc: "A crackling scroll of electrical discharge.", xpReward: 50 },
+  { id: "ring_of_agility", type: "enchanting", name: "Ring of Agility", icon: "\uD83D\uDC8D", ingredients: [{ item: "Iron Ore", qty: 2 }, { item: "Moonpetal", qty: 2 }], result: "Ring of Agility", resultQty: 1, minCraftLevel: 3, locationTypeRequired: ["city", "capital"], desc: "A slender ring that quickens the hands — +2 AGI.", xpReward: 50 },
+  { id: "amulet_of_warding", type: "enchanting", name: "Amulet of Warding", icon: "\uD83D\uDCFF", ingredients: [{ item: "Iron Ore", qty: 2 }, { item: "Ember Crystal", qty: 2 }, { item: "Moonpetal", qty: 1 }], result: "Amulet of Warding", resultQty: 1, minCraftLevel: 4, locationTypeRequired: ["city", "capital"], desc: "An amulet that bolsters magical resistance.", xpReward: 65 },
+];
+function CraftingScreen({ player, onCraft, onClose, T, tf, bf }) {
+  const [tab, setTab] = useState("alchemy");
+  const craftLevel = React.useMemo(() => getProfessionLevel(player, "crafting"), [player]);
+  const locTier = LOCATION_TIERS[player.location] || "village";
+  const tabs = [
+    { id: "alchemy", label: "\uD83E\uDDEA Alchemy" },
+    { id: "cooking", label: "\uD83C\uDF56 Cooking" },
+    { id: "smithing", label: "\u2692\uFE0F Smithing" },
+    { id: "enchanting", label: "\u2728 Enchanting" },
+  ];
+  const recipes = RECIPES.filter(r => r.type === tab);
+  const overlayStyle = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };
+  const panelStyle = { background: T.panel, border: `2px solid ${T.border}`, maxWidth: 640, width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", fontFamily: bf };
+  const headerStyle = { padding: "12px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" };
+  const tabBarStyle = { display: "flex", borderBottom: `1px solid ${T.border}` };
+  const listStyle = { overflowY: "auto", flex: 1, padding: 12 };
+  return React.createElement("div", { style: overlayStyle, onClick: e => { if (e.target === e.currentTarget) onClose(); } },
+    React.createElement("div", { style: panelStyle },
+      React.createElement("div", { style: headerStyle },
+        React.createElement("span", { style: { color: T.accent, fontFamily: tf, letterSpacing: 1, fontSize: 15 } }, "\u2692\uFE0F CRAFTING"),
+        React.createElement("span", { style: { color: T.textMuted, fontSize: 12 } }, "Crafting Lv.", craftLevel, " of 5"),
+        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: T.textFaint, cursor: "pointer", fontSize: 18 } }, "\u2715")
+      ),
+      React.createElement("div", { style: tabBarStyle },
+        tabs.map(t =>
+          React.createElement("button", {
+            key: t.id, onClick: () => setTab(t.id),
+            style: { flex: 1, padding: "8px 4px", background: tab === t.id ? T.panelAlt : "none", border: "none", borderBottom: tab === t.id ? `2px solid ${T.accent}` : "2px solid transparent", color: tab === t.id ? T.accent : T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: bf }
+          }, t.label)
+        )
+      ),
+      React.createElement("div", { style: listStyle },
+        recipes.length === 0
+          ? React.createElement("p", { style: { color: T.textFaint, textAlign: "center", marginTop: 32 } }, "No recipes available.")
+          : recipes.map(recipe => {
+              const levelOk = craftLevel >= recipe.minCraftLevel;
+              const locOk = !recipe.locationTypeRequired || recipe.locationTypeRequired.includes(locTier);
+              const ingredientsOk = recipe.ingredients.every(ing => countItem(player.inventory, ing.item) >= ing.qty);
+              const canCraft = levelOk && locOk && ingredientsOk;
+              const cardStyle = { padding: 12, marginBottom: 10, border: `1px solid ${T.border}`, background: T.panelAlt, opacity: (!levelOk || !locOk) ? 0.55 : 1 };
+              return React.createElement("div", { key: recipe.id, style: cardStyle },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
+                  React.createElement("span", { style: { color: T.text, fontSize: 14, fontFamily: tf } }, recipe.icon, " ", recipe.name, recipe.resultQty > 1 ? ` \u00d7${recipe.resultQty}` : ""),
+                  React.createElement("button", {
+                    onClick: () => canCraft && onCraft(recipe.id),
+                    disabled: !canCraft,
+                    style: { padding: "4px 12px", background: canCraft ? T.accent : T.border, color: canCraft ? "#fff" : T.textFaint, border: "none", cursor: canCraft ? "pointer" : "not-allowed", fontSize: 12, fontFamily: bf }
+                  }, "Craft")
+                ),
+                React.createElement("div", { style: { color: T.textMuted, fontSize: 12, fontStyle: "italic", marginBottom: 6 } }, recipe.desc),
+                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 } },
+                  recipe.ingredients.map(ing => {
+                    const have = countItem(player.inventory, ing.item);
+                    const ok = have >= ing.qty;
+                    return React.createElement("span", { key: ing.item, style: { fontSize: 11, padding: "2px 8px", background: ok ? "#1a3a1a" : "#3a1a1a", color: ok ? "#60a060" : "#c04040", border: `1px solid ${ok ? "#60a060" : "#c04040"}` } },
+                      ing.item, " ", have, "/", ing.qty
+                    );
+                  })
+                ),
+                !levelOk && React.createElement("div", { style: { color: "#c08040", fontSize: 11 } }, "\u2014 Requires Crafting Lv.", recipe.minCraftLevel),
+                !locOk && React.createElement("div", { style: { color: "#c08040", fontSize: 11 } }, "\u2014 Needs ", recipe.type === "smithing" ? "a forge (town or larger)" : "an arcane district (city or larger)")
+              );
+            })
+      )
+    )
+  );
 }
 function BestiaryScreen({ player, onClose, T, tf, bf }) {
   const [tab, setTab] = useState("all");
@@ -5556,6 +5700,7 @@ function AethermoorRPG() {
   const [showShop, setShowShop] = useState(false);
   const [showQuestLog, setShowQuestLog] = useState(false);
   const [showBestiary, setShowBestiary] = useState(false);
+  const [showCrafting, setShowCrafting] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [showSkillTree, setShowSkillTree] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
@@ -5866,6 +6011,23 @@ function AethermoorRPG() {
     if (!m) return null;
     try { return JSON.parse(m[1]); } catch { return null; }
   }
+  function extractWantedTag(text) {
+    const m = text.match(/\{"wanted"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
+  }
+  function extractVillainAllyTag(text) {
+    return /\{"villainAlly"\s*:\s*true\}/.test(text);
+  }
+  function extractWorldEventTag(text) {
+    const m = text.match(/\{"worldEvent"\s*:\s*(\{[^}]+\})\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
+  }
+  function extractGrantAbilityTag(text) {
+    const m = text.match(/\{"grantAbility"\s*:\s*"([^"]+)"\}/);
+    return m ? m[1] : null;
+  }
   function advanceGameTime(u, hours) {
     const total = (u.gameHour || 8) + hours;
     const dayInc = Math.floor(total / 24);
@@ -5919,6 +6081,10 @@ function AethermoorRPG() {
     t = t.replace(/\{"timePass"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"scheduleEvent"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"npcTravel"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"wanted"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"villainAlly"\s*:\s*true\}/g, "");
+    t = t.replace(/\{"worldEvent"\s*:\s*\{[^}]+\}\}/g, "");
+    t = t.replace(/\{"grantAbility"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
@@ -6170,6 +6336,26 @@ function AethermoorRPG() {
     setPlayer(u);
     saveGame(u, worldSeed, messages, narrative, log);
   }
+  function handleCraft(recipeId) {
+    if (!player) return;
+    const recipe = RECIPES.find(r => r.id === recipeId);
+    if (!recipe) return;
+    const craftLvl = getProfessionLevel(player, "crafting");
+    if (craftLvl < recipe.minCraftLevel) return;
+    const locTier = LOCATION_TIERS[player.location] || "village";
+    if (recipe.locationTypeRequired && !recipe.locationTypeRequired.includes(locTier)) return;
+    const allHave = recipe.ingredients.every(ing => countItem(player.inventory, ing.item) >= ing.qty);
+    if (!allHave) return;
+    let u = { ...player };
+    u = { ...u, inventory: removeIngredients(u.inventory, recipe.ingredients) };
+    u = { ...u, inventory: addCraftResult(u.inventory, recipe.result, recipe.resultQty) };
+    u = addProfessionXp(u, "crafting", recipe.xpReward);
+    const prevLvl = craftLvl;
+    const newLvl = getProfessionLevel(u, "crafting");
+    if (newLvl > prevLvl) queueLevelUpMsg(`\u2692\uFE0F Crafting Lv.${newLvl}!`, 4000);
+    setPlayer(u);
+    saveGame(u, worldSeed, messages, narrative, log);
+  }
   function handleUnlockSkill(skillId) {
     if (!player || (player.skillPoints || 0) < 1) return;
     let u = { ...player, unlockedSkills: [...(player.unlockedSkills || []), skillId], skillPoints: (player.skillPoints || 0) - 1 };
@@ -6257,6 +6443,7 @@ function AethermoorRPG() {
     const prose = stripContextTag(response);
     const xpGain = 10 + Math.floor(Math.random() * 15);
     let u = grantXP(player, xpGain);
+    let seedForSave = worldSeed;
     u = { ...u, context: ctx, actionCount: (u.actionCount || 0) + 1 };
     const npcTag = extractNpcTag(response);
     const npcUpdateTag = extractNpcUpdateTag(response);
@@ -6365,6 +6552,65 @@ function AethermoorRPG() {
       u = { ...u, knownNpcs: updatedNpcs };
       newLog.push({ type: "system", text: `\u{1F6A2} ${npcTravelTag.npcName} is traveling to ${npcTravelTag.destination}` });
     }
+    // Wanted level — narrator escalates when player commits criminal acts
+    const wantedTag = extractWantedTag(response);
+    if (wantedTag && typeof wantedTag.level === "number") {
+      const newLevel = Math.max(0, Math.min(3, wantedTag.level));
+      if (newLevel !== (u.wantedLevel || 0)) {
+        const labels = ["", "Bounty hunters are after you!", "Guards hostile on sight!", "A faction has declared you an enemy!"];
+        u = { ...u, wantedLevel: newLevel };
+        if (newLevel > 0) {
+          newLog.push({ type: "system", text: `\u26A0\uFE0F Wanted Lv.${newLevel}: ${labels[newLevel]}` });
+          queueLevelUpMsg(`\u26A0\uFE0F Wanted Lv.${newLevel} \u2014 ${labels[newLevel]}`, 5000);
+        }
+      }
+    }
+    // Villain alliance — narrator emits when player pledges to the villain's cause
+    const villainAllyTag = extractVillainAllyTag(response);
+    if (villainAllyTag && !worldSeed?.villainAllied) {
+      const vseed = { ...seedForSave, villainAllied: true };
+      setWorldSeed(vseed);
+      seedForSave = vseed;
+      newLog.push({ type: "system", text: "\uD83E\uDD1D You have pledged to the villain\u2019s cause. Aethermoor will not forgive this." });
+      queueLevelUpMsg("\uD83E\uDD1D Villain Alliance forged. The world shifts.", 6000);
+    }
+    // World events — narrator creates or resolves a location crisis
+    const worldEventTag = extractWorldEventTag(response);
+    if (worldEventTag?.location) {
+      const loc = worldEventTag.location;
+      const currentEvents = ((seedForSave.worldEvents || {})[loc]) || [];
+      let locEvents;
+      if (worldEventTag.clear && worldEventTag.type) {
+        locEvents = currentEvents.filter(ev => ev.type !== worldEventTag.type);
+      } else if (worldEventTag.type && worldEventTag.severity) {
+        const newEv = {
+          type: worldEventTag.type,
+          severity: worldEventTag.severity,
+          desc: worldEventTag.desc || "",
+          sourceDay: u.gameDay || 1,
+          endsDay: worldEventTag.endsDay ?? null
+        };
+        locEvents = [...currentEvents.filter(ev => ev.type !== worldEventTag.type), newEv];
+      } else {
+        locEvents = currentEvents;
+      }
+      const updSeed = { ...seedForSave, worldEvents: { ...(seedForSave.worldEvents || {}), [loc]: locEvents } };
+      setWorldSeed(updSeed);
+      seedForSave = updSeed;
+      if (worldEventTag.clear) {
+        newLog.push({ type: "system", text: `\u2705 ${worldEventTag.type} resolved in ${loc}.` });
+      } else if (worldEventTag.type) {
+        newLog.push({ type: "system", text: `\u26A0\uFE0F World event \u2014 ${loc}: ${worldEventTag.type} (${worldEventTag.severity})` });
+        queueLevelUpMsg(`\u26A0\uFE0F ${worldEventTag.type} strikes ${loc}!`, 5000);
+      }
+    }
+    // Ability teaching — narrator fires when an NPC completes teaching the player a new ability
+    const grantAbilityTag = extractGrantAbilityTag(response);
+    if (grantAbilityTag && !(u.abilities || []).includes(grantAbilityTag)) {
+      u = { ...u, abilities: [...(u.abilities || []), grantAbilityTag] };
+      newLog.push({ type: "system", text: `\u2728 You learned a new ability: ${grantAbilityTag}!` });
+      queueLevelUpMsg(`\u2728 New ability: ${grantAbilityTag}`, 5000);
+    }
     // Overdue appointment check — fire reminder when time has passed
     const overdueEvents = (u.scheduledEvents || []).filter(ev =>
       ev.day < u.gameDay || (ev.day === u.gameDay && ev.hour <= u.gameHour)
@@ -6377,6 +6623,21 @@ function AethermoorRPG() {
       u = { ...u, scheduledEvents: (u.scheduledEvents || []).filter(ev =>
         ev.day > u.gameDay || (ev.day === u.gameDay && ev.hour > u.gameHour)
       )};
+    }
+    // World event auto-expiry — remove events whose endsDay has passed
+    const _we = seedForSave.worldEvents || {};
+    const _hasExpired = Object.values(_we).some(evs =>
+      Array.isArray(evs) && evs.some(ev => ev.endsDay !== null && ev.endsDay !== undefined && ev.endsDay < u.gameDay)
+    );
+    if (_hasExpired) {
+      const pruned = {};
+      Object.entries(_we).forEach(([loc, evs]) => {
+        const live = (evs || []).filter(ev => ev.endsDay === null || ev.endsDay === undefined || ev.endsDay >= u.gameDay);
+        if (live.length > 0) pruned[loc] = live;
+      });
+      const expSeed = { ...seedForSave, worldEvents: pruned };
+      setWorldSeed(expSeed);
+      seedForSave = expSeed;
     }
     if (!["attack", "ability", "defend", "flee"].includes(cmdId)) {
       const heal = response.match(/(?:heal|restore|recover) (\d+) (?:HP|hit points)/i);
@@ -6431,7 +6692,7 @@ function AethermoorRPG() {
       setNarrative(prose);
       setLog(deathLog);
       setMessages(finalMsgsD);
-      await saveGame(u, worldSeed, finalMsgsD, prose, deathLog);
+      await saveGame(u, seedForSave, finalMsgsD, prose, deathLog);
       if (getAuthToken() && gravestone.dungeonFloor) {
         fetch(`${BACKEND_URL}/dungeon/reset`, {
           method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
@@ -6458,7 +6719,7 @@ function AethermoorRPG() {
           u = { ...u, travel: { ...u.travel, pendingCombatArchetype: null } };
           isBossSpawn = false;
         }
-        if (mq && mq.finalBossEncounterReady && !mq.finalBossDefeated && !mq.mainQuestComplete) {
+        if (mq && mq.finalBossEncounterReady && !mq.finalBossDefeated && !mq.mainQuestComplete && !worldSeed?.villainAllied) {
           const nearLair = /(lair|throne|sanctum|chamber|inner|heart|core|final|villain|boss)/i.test(narrative);
           if (nearLair || Math.random() < 0.25) {
             enemy = generateFinalBoss(u.level, mq);
@@ -6474,7 +6735,22 @@ function AethermoorRPG() {
           }
         }
         if (!enemy) {
-          enemy = generateEnemy(u.level, u.context, u.location);
+          const locData = WORLD_DATA.find(w => w.name === u.location);
+          const inSettlement = ["city","town","village","hamlet"].includes(locData?.type);
+          const wl = u.wantedLevel || 0;
+          if (wl >= 2 && inSettlement) {
+            enemy = generateEnemy(u.level, "combat", u.location, "soldier");
+          } else if (wl >= 1 && inSettlement && Math.random() < 0.6) {
+            enemy = generateEnemy(u.level, "combat", u.location, "soldier");
+          } else {
+            const siegeActive = inSettlement &&
+              ((seedForSave.worldEvents || {})[u.location] || []).some(ev => ev.type === "siege");
+            if (siegeActive && Math.random() < 0.7) {
+              enemy = generateEnemy(u.level, "combat", u.location, "soldier");
+            } else {
+              enemy = generateEnemy(u.level, u.context, u.location);
+            }
+          }
         }
         const mq2 = worldSeed;
         let namePrompt;
@@ -6765,7 +7041,7 @@ function AethermoorRPG() {
       setMessages(finalMsgs2);
       setNarrative(prose);
       setLog(finalLog2);
-      await saveGame(u, worldSeed, finalMsgs2, prose, finalLog2);
+      await saveGame(u, seedForSave, finalMsgs2, prose, finalLog2);
       setIsLoading(false);
       return;
     }
@@ -6781,6 +7057,13 @@ function AethermoorRPG() {
       const isWild = ctx === "explore" || ctx === "camp";
       const actionsSinceForage = (u.actionCount || 0) - (u.lastForageAction || -10);
       if (isWild && actionsSinceForage >= 3) {
+        const blightActive = ((seedForSave.worldEvents || {})[u.location] || [])
+          .some(ev => ev.type === "blight");
+        if (blightActive) {
+          newLog.push({ type: "system", text: `Blight at ${u.location} \u2014 the land is poisoned. Nothing grows here.` });
+          u = { ...u, lastForageAction: u.actionCount || 0 };
+          msg = msg + ` [FORAGE_FOUND:nothing]`;
+        } else {
         const hasForagerKit = hasTool(u, "forager kit");
         const survivalLvl = getProfessionLevel(u, "survival");
         const thornRank = getFactionRank((u.factionStandings || {})["thornwood_druids"] || 0);
@@ -6818,6 +7101,7 @@ function AethermoorRPG() {
           if (isThornwood) u = grantFactionXP(u, "thornwood_druids", 2);
           msg = msg + ` [FORAGE_FOUND:nothing]`;
         }
+        } // end blight else
       }
     }
     if (cmdId === "farm") {
@@ -7013,7 +7297,7 @@ function AethermoorRPG() {
       setNarrative(floorProse);
       setLog(newLog);
       setMessages(finalMsgsD);
-      await saveGame(u, worldSeed, finalMsgsD, floorProse, newLog);
+      await saveGame(u, seedForSave, finalMsgsD, floorProse, newLog);
       setIsLoading(false);
       return;
     }
@@ -7139,6 +7423,11 @@ function AethermoorRPG() {
         u = { ...u, reputation: (u.reputation || 0) + 1 };
         newLog.push({ type: "system", text: "\u{1F525} Made camp (ration used) \u2014 full HP + status cleared" });
         queueLevelUpMsg("\u{1F525} Camp. Full HP. Status cleared.", 4e3);
+        if ((u.abilities || []).includes("Ghost") && (u.wantedLevel || 0) > 0) {
+          u = { ...u, wantedLevel: 0 };
+          newLog.push({ type: "system", text: "\uD83C\uDF2B\uFE0F Ghost: your trail has gone cold. Wanted status cleared." });
+          queueLevelUpMsg("\uD83C\uDF2B\uFE0F Ghost ability: Wanted level cleared.", 4000);
+        }
       } else {
         const campPct = 0.5 + (hasBedroll ? 0.15 : 0) + (survivalLvl - 1) * 0.03;
         const campHeal = Math.ceil((u.maxHp - u.hp) * Math.min(0.8, campPct));
@@ -7194,7 +7483,7 @@ function AethermoorRPG() {
           setMessages(finalMsgsArr);
           setNarrative(arrivalProse);
           setLog(arrivalLog);
-          await saveGame(u, worldSeed, finalMsgsArr, arrivalProse, arrivalLog);
+          await saveGame(u, seedForSave, finalMsgsArr, arrivalProse, arrivalLog);
           queueLevelUpMsg(`\u{1F4CD} Arrived at ${arrived}!`, 4e3);
           extractQuestFromNarrative(arrivalProse, u).then((q) => {
             if (!q) return;
@@ -7305,7 +7594,7 @@ function AethermoorRPG() {
         setMessages(finalMsgsTravel);
         setNarrative(responseProse);
         setLog(travelLog);
-        await saveGame(u, worldSeed, finalMsgsTravel, responseProse, travelLog);
+        await saveGame(u, seedForSave, finalMsgsTravel, responseProse, travelLog);
         extractQuestFromNarrative(responseProse, u).then((q) => {
           if (!q) return;
           setPlayer((prev) => {
@@ -7362,7 +7651,7 @@ function AethermoorRPG() {
         setMessages(finalMsgsDepart);
         setNarrative(departProse);
         setLog(departLog);
-        await saveGame(u, worldSeed, finalMsgsDepart, departProse, departLog);
+        await saveGame(u, seedForSave, finalMsgsDepart, departProse, departLog);
         setIsLoading(false);
         return;
       }
@@ -7377,7 +7666,7 @@ function AethermoorRPG() {
       setMessages(finalMsgs2);
       setNarrative(prose);
       setLog(finalLog2);
-      await saveGame(u, worldSeed, finalMsgs2, prose, finalLog2);
+      await saveGame(u, seedForSave, finalMsgs2, prose, finalLog2);
       setIsLoading(false);
       return;
     }
@@ -7453,12 +7742,12 @@ function AethermoorRPG() {
     setMessages(finalMsgs);
     setNarrative(prose);
     setLog(finalLog);
-    await saveGame(u, worldSeed, finalMsgs, prose, finalLog);
+    await saveGame(u, seedForSave, finalMsgs, prose, finalLog);
     const actMatch = response.match(/\{"mainQuestAct"\s*:\s*"([^"]+)"\}/);
     const allyMatch = response.match(/\{"allyRevealed"\s*:\s*true\}/);
     const betrayalMatch = response.match(/\{"betrayalSprung"\s*:\s*true\}/);
     if ((actMatch || allyMatch || betrayalMatch) && worldSeed) {
-      let updatedSeed = { ...worldSeed };
+      let updatedSeed = { ...seedForSave };
       const act = actMatch?.[1];
       if (act === "2" && !updatedSeed.act1Complete) {
         updatedSeed = { ...updatedSeed, act1Complete: true, currentAct: 2, lieutenantEncounterReady: true };
@@ -8357,6 +8646,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
   },
     ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F6D2} Shop"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F392} Gear"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\u{1F4DC} Quests", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u2B50 Rep"),
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBestiary(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\u{1F4D6} Bestiary", (player?.bestiary || []).length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#c04040", color: "#fff", borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.bestiary || []).length)),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setShowCrafting(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u2692\uFE0F Craft"),
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPatchNotes(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F4DD} Patch"),
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowSkillTree(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\uD83C\uDF3F Skills", (player?.skillPoints || 0) > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#60a060", color: "#fff", borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, player.skillPoints)),
       /* @__PURE__ */ React.createElement("button", {
@@ -8408,7 +8698,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
       onCancel: () => setShowNGPlusScreen(false),
       onConfirm: (ngData) => clearSave(ngData)
     }
-  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), onCopyDiscord: handleCopyPatchNotes, onPostDiscord: handlePostPatchNotes, T, tf, bf }), showSkillTree && player && /* @__PURE__ */ React.createElement(SkillTreeScreen, { player, onUnlock: handleUnlockSkill, onClose: () => setShowSkillTree(false), T, tf, bf })));
+  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showCrafting && player && /* @__PURE__ */ React.createElement(CraftingScreen, { player, onCraft: handleCraft, onClose: () => setShowCrafting(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), onCopyDiscord: handleCopyPatchNotes, onPostDiscord: handlePostPatchNotes, T, tf, bf }), showSkillTree && player && /* @__PURE__ */ React.createElement(SkillTreeScreen, { player, onUnlock: handleUnlockSkill, onClose: () => setShowSkillTree(false), T, tf, bf })));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AethermoorRPG));
 </script>
