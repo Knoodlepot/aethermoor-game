@@ -286,6 +286,10 @@ const COMMAND_GROUPS = [
     commands: [
       { id: "look", icon: "\u{1F441}", label: "Look", desc: "Take a careful look around. The world describes itself to you in detail.", context: ["explore", "town", "camp", "npc"] },
       { id: "search", icon: "\u{1F50D}", label: "Search", desc: "Hunt for hidden items, forage for food/herbs in the wild, or seek clues and secret passages.", context: ["explore", "town", "camp"] },
+      { id: "forage", icon: "\u{1F33F}", label: "Forage", desc: "Gather food and herbs from the wild. Better tools improve results.", context: ["explore", "camp"] },
+      { id: "farm", icon: "\u{1F33E}", label: "Farm", desc: "Work nearby fields for grain and produce. A sickle helps.", context: ["explore", "camp"] },
+      { id: "chop_wood", icon: "\u{1FA93}", label: "Chop Wood", desc: "Gather timber for shelter and trade. A hatchet is required.", context: ["explore", "camp"] },
+      { id: "mine_ore", icon: "\u26CF\uFE0F", label: "Mine Ore", desc: "Extract ore and stone from rocky ground. A pickaxe is required.", context: ["explore", "camp"] },
       { id: "listen", icon: "\u{1F442}", label: "Listen", desc: "Stand still and tune in \u2014 overheard conversations, distant sounds, or silence.", context: ["explore", "town", "camp", "npc"] },
       { id: "enter", icon: "\u{1F6AA}", label: "Enter", desc: "Step inside a building, cave, or structure you can see nearby.", context: ["explore", "town"] },
       { id: "poi_enter", icon: "\u2620\uFE0F", label: "Venture In", desc: "Enter this dangerous place. A boss lurks inside — and treasure awaits the bold.", context: ["poi"] }
@@ -335,6 +339,10 @@ const CMD_MESSAGES = {
   go_west: "I head west.",
   look: "I stop and carefully look around, taking in every detail of my surroundings.",
   search: "I search the area thoroughly, looking for anything hidden, useful, or unusual.",
+  forage: "I forage carefully for edible plants, herbs, and useful supplies in the nearby wild.",
+  farm: "I look for nearby fields and work the land to gather useful crops.",
+  chop_wood: "I gather timber from nearby trees for shelter and supplies.",
+  mine_ore: "I search rocky ground and mine for ore and useful stone.",
   listen: "I stand still and listen carefully to everything around me.",
   enter: "I enter the building or location in front of me.",
   talk: "I approach someone nearby and strike up a conversation.",
@@ -395,6 +403,11 @@ const ITEM_INFO = {
   "torch": { icon: "\u{1F526}", type: "Tool", desc: "A simple wooden torch dipped in pitch. Lights dark places and keeps weaker creatures at bay." },
   "lockpick": { icon: "\u{1F5DD}\uFE0F", type: "Tool", desc: "A slender metal pick used to open locked doors and chests. Requires a steady hand and some AGI." },
   "rope": { icon: "\u{1FAA2}", type: "Tool", desc: "Thirty feet of sturdy hempen rope. Useful for climbing, binding, or escaping tight spots." },
+  "forager kit": { icon: "\u{1F9FA}", type: "Tool", desc: "A wildcrafting kit of pouches, shears and snare cord. Improves forage yields and safety." },
+  "bedroll": { icon: "\u{1F6CF}\uFE0F", type: "Tool", desc: "A rolled sleeping mat that lets you recover better when camping outside settlements." },
+  "woodcutter hatchet": { icon: "\u{1FA93}", type: "Tool", desc: "A compact axe for splitting branches and felling small timber." },
+  "miner's pickaxe": { icon: "\u26CF\uFE0F", type: "Tool", desc: "A hardened mining pick for extracting ore from stone and cliffsides." },
+  "farm sickle": { icon: "\u{1F33E}", type: "Tool", desc: "A curved harvesting blade for gathering grain and field produce quickly." },
   "map": { icon: "\u{1F5FA}\uFE0F", type: "Document", desc: "A rough parchment map of the local area. Reveals roads, landmarks and points of interest." },
   "key": { icon: "\u{1F511}", type: "Key", desc: "A worn iron key. It must open something nearby \u2014 but what?" },
   "bread": { icon: "\u{1F35E}", type: "Food", desc: "A small loaf of travel bread. Eating it during a rest slightly improves HP recovery." },
@@ -411,6 +424,11 @@ const ITEM_INFO = {
   "amulet": { icon: "\u{1F4FF}", type: "Magic", desc: "A carved stone amulet humming faintly with power. Its effect reveals itself when worn." },
   "ring": { icon: "\u{1F48D}", type: "Magic", desc: "A simple band of silver etched with runes. Provides a subtle but persistent magical benefit." },
   "herb": { icon: "\u{1F33F}", type: "Crafting", desc: "Freshly gathered medicinal herbs. A healer or alchemist could brew these into a useful potion." },
+  "firewood": { icon: "\u{1FAB5}", type: "Resource", desc: "Dry chopped wood useful for campfires, shelter work, and basic crafting." },
+  "timber bundle": { icon: "\u{1FAB5}", type: "Resource", desc: "Strapped timber suitable for building shelters, repairs, and trade." },
+  "iron ore": { icon: "\u26CF\uFE0F", type: "Resource", desc: "Unrefined iron-bearing rock. Useful for blacksmithing and future crafting." },
+  "copper ore": { icon: "\u26CF\uFE0F", type: "Resource", desc: "A common ore used in tools, fittings and trade goods." },
+  "silver ore": { icon: "\u26CF\uFE0F", type: "Resource", desc: "Valuable ore prized by smiths and enchanters." },
   "gem": { icon: "\u{1F48E}", type: "Treasure", desc: "A faceted gemstone that catches the light. Worth a fair sum to the right merchant." },
   "arrow": { icon: "\u{1F3F9}", type: "Ammunition", desc: "Fletched hunting arrows. Required for ranged combat with a bow." }
 };
@@ -529,6 +547,11 @@ const SHOP_ITEMS = [
   { id: "rations", name: "Rations x3", icon: "\u{1F392}", tier: "basic", price: 12, desc: "Three days of dried provisions for the road." },
   { id: "dried_meat", name: "Dried Meat", icon: "\u{1F969}", tier: "basic", price: 6, desc: "Salted and dried. One meal worth of sustenance on the road." },
   { id: "trail_bread", name: "Trail Bread", icon: "\u{1FAD3}", tier: "basic", price: 4, desc: "Hard tack that keeps for weeks. Reliable if not delicious." },
+  { id: "forager_kit", name: "Forager Kit", icon: "\u{1F9FA}", tier: "basic", price: 22, desc: "Pouches, snare wire, and herb shears. Improves foraging outcomes." },
+  { id: "bedroll", name: "Bedroll", icon: "\u{1F6CF}\uFE0F", tier: "basic", price: 20, desc: "A sturdy traveler bedroll. Improves recovery while camping." },
+  { id: "woodcutter_hatchet", name: "Woodcutter Hatchet", icon: "\u{1FA93}", tier: "basic", price: 28, desc: "A practical hatchet for chopping timber." },
+  { id: "miners_pickaxe", name: "Miner's Pickaxe", icon: "\u26CF\uFE0F", tier: "basic", price: 35, desc: "A reinforced pickaxe for mining ore." },
+  { id: "farm_sickle", name: "Farm Sickle", icon: "\u{1F33E}", tier: "basic", price: 24, desc: "Curved harvesting blade for efficient fieldwork." },
   { id: "medicinal_herb", name: "Medicinal Herb", icon: "\u{1F33F}", tier: "uncommon", price: 18, desc: "A pressed healing herb. Restores HP and cleanses poison on use." },
   { id: "rare_mushroom", name: "Rare Mushroom", icon: "\u{1F344}", tier: "uncommon", price: 28, desc: "A potent restorative fungus. Powerful but risky if you don't know what you're doing." },
   { id: "herb", name: "Healing Herb", icon: "\u{1F33F}", tier: "basic", price: 8, desc: "Raw medicinal herb. Useful for crafting or minor healing." },
@@ -2093,6 +2116,14 @@ const INIT_PLAYER = (name, cls) => ({
   // skill IDs unlocked from the skill tree
   skillPoints: 0,
   // available skill points (earned on level-up)
+  professions: {
+    survival: { level: 1, xp: 0 },
+    social: { level: 1, xp: 0 },
+    farming: { level: 1, xp: 0 },
+    gathering: { level: 1, xp: 0 },
+    crafting: { level: 1, xp: 0 }
+  },
+  // universal non-class progression tracks
 });
 // ── Backend URL ──────────────────────────────────────────────────────────
 // Live Railway server — update this if the backend URL ever changes.
@@ -3264,6 +3295,36 @@ function getItemSlotEx(itemName) {
 }
 const INN_PRICES = { village: 5, town: 10, city: 20, capital: 30 };
 const RATION_ITEMS = ["Rations x3", "Rations x2", "Rations x1", "Rations", "Dried Meat", "Trail Bread", "Salted Fish", "Iron Rations"];
+const PROFESSION_KEYS = ["survival", "social", "farming", "gathering", "crafting"];
+function getProfessionLevel(player, key) {
+  const lvl = player?.professions?.[key]?.level || 1;
+  return Math.max(1, Math.min(5, lvl));
+}
+function getProfessionXp(player, key) {
+  return Math.max(0, player?.professions?.[key]?.xp || 0);
+}
+function addProfessionXp(player, key, amount) {
+  if (!PROFESSION_KEYS.includes(key) || amount <= 0) return player;
+  const current = {
+    survival: { level: getProfessionLevel(player, "survival"), xp: getProfessionXp(player, "survival") },
+    social: { level: getProfessionLevel(player, "social"), xp: getProfessionXp(player, "social") },
+    farming: { level: getProfessionLevel(player, "farming"), xp: getProfessionXp(player, "farming") },
+    gathering: { level: getProfessionLevel(player, "gathering"), xp: getProfessionXp(player, "gathering") },
+    crafting: { level: getProfessionLevel(player, "crafting"), xp: getProfessionXp(player, "crafting") }
+  };
+  const next = { ...current };
+  next[key] = { ...next[key], xp: next[key].xp + amount };
+  while (next[key].level < 5 && next[key].xp >= next[key].level * 60) {
+    next[key].xp -= next[key].level * 60;
+    next[key].level += 1;
+  }
+  return { ...player, professions: next };
+}
+function hasTool(player, toolName) {
+  const all = [...(player?.inventory || []), ...Object.values(player?.equipped || {}).filter(Boolean)];
+  const kw = toolName.toLowerCase();
+  return all.some((item) => item && item.toLowerCase().includes(kw));
+}
 function countRations(inventory) {
   return (inventory || []).filter(
     (item) => RATION_ITEMS.some((r) => item.toLowerCase().startsWith(r.toLowerCase().replace(/ x\d+$/i, "")))
@@ -4302,6 +4363,8 @@ function ShopScreen({ player, onBuy, onSell, onClose, T, tf, isDyslexic }) {
   function applyDiscount(price) {
     let disc = perks.discount / 100;
     if ((player.legacyPerks || []).includes("merchants_friend")) disc = Math.min(0.75, disc + 0.25);
+    const socialDisc = Math.max(0, (getProfessionLevel(player, "social") - 1) * 0.02);
+    disc = Math.min(0.75, disc + socialDisc);
     return Math.max(1, Math.floor(price * (1 - disc)));
   }
   function flash(msg) {
@@ -6693,6 +6756,7 @@ function AethermoorRPG() {
     if (cmdId === "barter") {
       u = grantFactionXP(u, "merchants_compact", 8);
       u = grantLocationXP(u, u.location, 5);
+      u = addProfessionXp(u, "social", 10);
       u = { ...u, reputation: (u.reputation || 0) + 1 };
       setPlayer(u);
       setShowShop(true);
@@ -6710,16 +6774,18 @@ function AethermoorRPG() {
       u = grantLocationXP(u, u.location, 5);
       u = { ...u, reputation: (u.reputation || 0) + 1 };
     }
-    if (["search", "inspect"].includes(cmdId)) {
+    if (["search", "inspect", "forage"].includes(cmdId)) {
       u = grantFactionXP(u, "arcane_academy", 5);
       u = grantLocationXP(u, u.location, 3);
       u = { ...u, reputation: (u.reputation || 0) + 1 };
       const isWild = ctx === "explore" || ctx === "camp";
       const actionsSinceForage = (u.actionCount || 0) - (u.lastForageAction || -10);
       if (isWild && actionsSinceForage >= 3) {
+        const hasForagerKit = hasTool(u, "forager kit");
+        const survivalLvl = getProfessionLevel(u, "survival");
         const thornRank = getFactionRank((u.factionStandings || {})["thornwood_druids"] || 0);
         const isThornwood = (u.joinedFactions || []).includes("thornwood_druids");
-        const forageMult = isThornwood ? thornRank >= 3 ? 1.5 : 1.25 : 1;
+        const forageMult = (isThornwood ? thornRank >= 3 ? 1.5 : 1.25 : 1) * (hasForagerKit ? 1.2 : 1) * (1 + (survivalLvl - 1) * 0.06);
         const table = [
           { item: null, weight: 50 / forageMult },
           // nothing
@@ -6727,7 +6793,8 @@ function AethermoorRPG() {
           { item: "Trail Bread", weight: 15 * forageMult },
           { item: "Rations", weight: 8 * forageMult },
           { item: "Medicinal Herb", weight: 5 * forageMult },
-          { item: "Rare Mushroom", weight: 2 * forageMult }
+          { item: "Rare Mushroom", weight: 2 * forageMult },
+          { item: hasForagerKit ? null : "Forager Kit", weight: hasForagerKit ? 0 : 0.8 }
         ];
         const total = table.reduce((s, e) => s + e.weight, 0);
         let roll = Math.random() * total;
@@ -6741,14 +6808,94 @@ function AethermoorRPG() {
         }
         if (found) {
           u = { ...u, inventory: [...u.inventory || [], found], lastForageAction: u.actionCount || 0 };
+          u = addProfessionXp(u, "survival", cmdId === "forage" ? 14 : 8);
           u = grantFactionXP(u, "thornwood_druids", isThornwood ? 8 : 4);
           newLog.push({ type: "system", text: `\u{1F33F} Foraged: ${found}` });
           queueLevelUpMsg(`\u{1F33F} Foraged: ${found}!`, 3500);
           msg = msg + ` [FORAGE_FOUND:${found}]`;
         } else {
+          u = addProfessionXp(u, "survival", 3);
           if (isThornwood) u = grantFactionXP(u, "thornwood_druids", 2);
           msg = msg + ` [FORAGE_FOUND:nothing]`;
         }
+      }
+    }
+    if (cmdId === "farm") {
+      const canFarm = ctx === "explore" || ctx === "camp";
+      const hasSickle = hasTool(u, "sickle");
+      const farmingLvl = getProfessionLevel(u, "farming");
+      if (canFarm) {
+        const farmTable = [
+          { item: "Trail Bread", weight: 24 + farmingLvl * 3 },
+          { item: "Rations", weight: 10 + farmingLvl * 2 + (hasSickle ? 6 : 0) },
+          { item: "Medicinal Herb", weight: 5 + (hasSickle ? 3 : 0) },
+          { item: null, weight: hasSickle ? 28 : 48 }
+        ];
+        const total = farmTable.reduce((s, e) => s + e.weight, 0);
+        let roll = Math.random() * total;
+        let found = null;
+        for (const entry of farmTable) {
+          roll -= entry.weight;
+          if (roll <= 0) {
+            found = entry.item;
+            break;
+          }
+        }
+        u = addProfessionXp(u, "farming", found ? 14 : 5);
+        if (found) {
+          u = { ...u, inventory: [...(u.inventory || []), found] };
+          newLog.push({ type: "system", text: `\u{1F33E} Harvested: ${found}` });
+          queueLevelUpMsg(`\u{1F33E} Harvested: ${found}!`, 3500);
+          msg = msg + ` [FARM_FOUND:${found}]`;
+        } else {
+          newLog.push({ type: "system", text: hasSickle ? "\u{1F33E} You tended the field but found little worth taking." : "\u{1F33E} You need a sickle for better harvests." });
+          msg = msg + ` [FARM_FOUND:nothing]`;
+        }
+      }
+    }
+    if (cmdId === "chop_wood") {
+      const hasHatchet = hasTool(u, "hatchet");
+      if (!hasHatchet) {
+        newLog.push({ type: "system", text: "\u26A0\uFE0F You need a Woodcutter Hatchet to gather timber." });
+        queueLevelUpMsg("⚠️ Hatchet required for timber gathering.", 3500);
+      } else {
+        const gatheringLvl = getProfessionLevel(u, "gathering");
+        u = addProfessionXp(u, "gathering", 12);
+        const woodItem = Math.random() < 0.75 + gatheringLvl * 0.04 ? "Timber Bundle" : "Firewood";
+        u = { ...u, inventory: [...(u.inventory || []), woodItem] };
+        newLog.push({ type: "system", text: `\u{1FAB5} Gathered: ${woodItem}` });
+        queueLevelUpMsg(`\u{1FAB5} Gathered: ${woodItem}`, 3500);
+        msg = msg + ` [TIMBER_FOUND:${woodItem}]`;
+      }
+    }
+    if (cmdId === "mine_ore") {
+      const hasPickaxe = hasTool(u, "pickaxe");
+      if (!hasPickaxe) {
+        newLog.push({ type: "system", text: "\u26A0\uFE0F You need a Miner's Pickaxe to mine ore." });
+        queueLevelUpMsg("⚠️ Pickaxe required for mining.", 3500);
+      } else {
+        const gatheringLvl = getProfessionLevel(u, "gathering");
+        u = addProfessionXp(u, "gathering", 14);
+        const oreTable = [
+          { item: "Iron Ore", weight: 60 - gatheringLvl * 4 },
+          { item: "Copper Ore", weight: 30 + gatheringLvl * 3 },
+          { item: "Silver Ore", weight: 12 + gatheringLvl * 2 },
+          { item: "Ruby Gemstone", weight: 3 + gatheringLvl * 0.8 }
+        ];
+        const total = oreTable.reduce((s, e) => s + e.weight, 0);
+        let roll = Math.random() * total;
+        let found = "Iron Ore";
+        for (const entry of oreTable) {
+          roll -= entry.weight;
+          if (roll <= 0) {
+            found = entry.item;
+            break;
+          }
+        }
+        u = { ...u, inventory: [...(u.inventory || []), found] };
+        newLog.push({ type: "system", text: `\u26CF\uFE0F Mined: ${found}` });
+        queueLevelUpMsg(`\u26CF\uFE0F Mined: ${found}`, 3500);
+        msg = msg + ` [ORE_FOUND:${found}]`;
       }
     }
     if (["look", "listen"].includes(cmdId)) {
@@ -6980,22 +7127,27 @@ function AethermoorRPG() {
     }
     if (cmdId === "camp") {
       const hasRation = countRations(u.inventory) > 0;
+      const survivalLvl = getProfessionLevel(u, "survival");
+      const hasBedroll = hasTool(u, "bedroll");
       if (hasRation) {
         const newInv = removeOneRation(u.inventory);
         u = { ...u, inventory: newInv, hp: u.maxHp };
         setPlayerStatusEffects([]);
+        u = addProfessionXp(u, "survival", 10);
         u = grantFactionXP(u, "thornwood_druids", 6);
         u = grantLocationXP(u, u.location, 2);
         u = { ...u, reputation: (u.reputation || 0) + 1 };
         newLog.push({ type: "system", text: "\u{1F525} Made camp (ration used) \u2014 full HP + status cleared" });
         queueLevelUpMsg("\u{1F525} Camp. Full HP. Status cleared.", 4e3);
       } else {
-        const campHeal = Math.ceil((u.maxHp - u.hp) * 0.5);
+        const campPct = 0.5 + (hasBedroll ? 0.15 : 0) + (survivalLvl - 1) * 0.03;
+        const campHeal = Math.ceil((u.maxHp - u.hp) * Math.min(0.8, campPct));
         u = { ...u, hp: Math.min(u.maxHp, u.hp + campHeal) };
+        u = addProfessionXp(u, "survival", 6);
         u = grantFactionXP(u, "thornwood_druids", 3);
         u = grantLocationXP(u, u.location, 2);
-        newLog.push({ type: "system", text: `\u{1F525} Camped without rations \u2014 +${campHeal} HP (no status clear)` });
-        queueLevelUpMsg(`\u{1F525} No rations. +${campHeal} HP. Status effects remain.`, 4e3);
+        newLog.push({ type: "system", text: `\u{1F525} Camped without rations \u2014 +${campHeal} HP${hasBedroll ? " (bedroll bonus)" : ""} (no status clear)` });
+        queueLevelUpMsg(`\u{1F525} No rations. +${campHeal} HP${hasBedroll ? " with bedroll." : "."} Status effects remain.`, 4e3);
       }
       setShopStockKey((k) => k + 1);
     }
