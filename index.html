@@ -2253,7 +2253,7 @@ async function callClaude(messages, systemOrContext, _playerIdArg, onTokenUpdate
   return backendFetch({
     systemType,
     playerContext: playerContext || undefined,
-    max_tokens: 900,
+    max_tokens: 1500,
     messages,
   }, onTokenUpdate);
 }
@@ -2963,43 +2963,72 @@ function generateMainQuestSeed() {
 }
 async function generateWorldSeed() {
   const seed = generateMainQuestSeed();
-  const travelMatrix = await generateTravelMatrix();
-  if (travelMatrix) seed.travelMatrix = travelMatrix;
+  const travelData = await generateWorldGeography();
+  if (travelData) seed.travelMatrix = travelData;
   return seed;
 }
-async function generateTravelMatrix() {
-  // Use capital + cities only (7 settlements = 21 pairs) — compact enough for the narrator prompt
-  const keySettlements = WORLD_DATA
-    .filter(s => ["capital", "city"].includes(s.type))
-    .map(s => s.name);
-  const prompt = `You are a fantasy world geographer for "Aethermoor". Generate realistic medieval travel data between these settlements: ${keySettlements.join(", ")}.
+async function generateWorldGeography() {
+  // Step 1: Collect major settlements for AI geography assignment
+  const majorSettlements = WORLD_DATA.filter(s => ["capital","city","town"].includes(s.type));
+  const majorNames = majorSettlements.map(s => s.name).join(", ");
 
-Rules:
-- Aethermoor Capital is the largest and most central city
-- Travel times are in hours on foot at walking pace
-- Distances should feel medieval: short hops 6-16 hours, long cross-country 20-60 hours
-- Be geographically consistent (triangle inequality — if A→B is 8h and B→C is 6h, A→C should be roughly 10-12h)
-- Invent a geography: some routes follow rivers (river barge available), some are coastal (sea boat available), most are just road or track
-- Each settlement gets a geography note: whether it sits on a river, a coast, or neither
+  // Step 2: Ask AI for geography (coast/river/harbour) only — distances come from coords
+  const geoPrompt = `You are a fantasy geographer for "Aethermoor". Assign geography to these settlements: ${majorNames}.
+For each, decide if it sits on a river, a coast, or neither. Coastal settlements of town+ tier should have a harbour.
+Reply ONLY with valid compact JSON, no markdown, no explanation:
+{"geography":{"Name":{"river":false,"coast":true,"harbour":true,"note":"port on the southern bay"}}}
+Note is optional, max 8 words. Generate one entry per settlement.`;
 
-Reply ONLY with valid compact JSON, no markdown:
-{
-  "routes": [
-    {"from":"Name","to":"Name","hours":12,"terrain":"road","river":false,"coast":false}
-  ],
-  "geography": {
-    "Name": {"river":true,"coast":false,"note":"sits on the River Aldren"}
-  }
-}
-
-Generate one route entry for every unique pair. Geography note is optional (max 8 words).`;
+  let geography = {};
   try {
-    const res = await callClaude([{ role: "user", content: prompt }], "You are a fantasy world geographer. Reply only with valid compact JSON, no markdown, no explanation.");
+    const res = await callClaude(
+      [{ role: "user", content: geoPrompt }],
+      "You are a fantasy world geographer. Reply only with valid compact JSON, no markdown, no explanation."
+    );
     const data = JSON.parse(res.replace(/```json|```/g, "").trim());
-    return { routes: data.routes || [], geography: data.geography || {}, settlements: keySettlements };
-  } catch (e) {
-    return null;
+    geography = data.geography || {};
+  } catch(e) { /* fallback: no geography flags */ }
+
+  // Step 3: Build locationGrid for ALL settlements + POIs using existing mapX/mapY coords
+  const locationGrid = {};
+  WORLD_DATA.forEach(loc => {
+    if (loc.mapX === undefined || loc.mapY === undefined) return;
+    const geo = geography[loc.name] || {};
+    const isCoastal = !!geo.coast;
+    const hasHarbour = isCoastal && ["capital","city","town"].includes(loc.type) && (geo.harbour !== false);
+    locationGrid[loc.name] = {
+      x: Math.round(loc.mapX),
+      y: Math.round(loc.mapY),
+      type: loc.type,
+      coast: isCoastal,
+      river: !!geo.river,
+      harbour: hasHarbour,
+      parent: loc.parentSettlement || null,
+      isPOI: !!loc.isPOI,
+      note: geo.note || null
+    };
+  });
+
+  // Step 4: Compute pairwise routes for capital+city tier from coordinates
+  // 1 map unit ≈ 1.5h on foot — consistent, triangle-inequality guaranteed
+  const keyLocs = WORLD_DATA.filter(s => ["capital","city"].includes(s.type));
+  const routes = [];
+  for (let i = 0; i < keyLocs.length; i++) {
+    for (let j = i + 1; j < keyLocs.length; j++) {
+      const a = keyLocs[i], b = keyLocs[j];
+      const ax = locationGrid[a.name]?.x ?? a.mapX, ay = locationGrid[a.name]?.y ?? a.mapY;
+      const bx = locationGrid[b.name]?.x ?? b.mapX, by = locationGrid[b.name]?.y ?? b.mapY;
+      const hours = Math.max(4, Math.round(Math.sqrt((ax-bx)**2 + (ay-by)**2) * 1.5));
+      const gA = geography[a.name] || {}, gB = geography[b.name] || {};
+      routes.push({
+        from: a.name, to: b.name, hours, terrain: "road",
+        river: !!(gA.river || gB.river),
+        coast: !!(gA.coast || gB.coast)
+      });
+    }
   }
+
+  return { routes, geography, locationGrid };
 }
 const FACTION_RANKS = ["Outsider", "Initiate", "Member", "Trusted", "Champion", "Legend"];
 const FACTION_XP_NEEDED = [0, 80, 200, 400, 700, 1100];
@@ -6028,6 +6057,10 @@ function AethermoorRPG() {
     const m = text.match(/\{"repChange"\s*:\s*(-?\d+)\}/);
     return m ? parseInt(m[1], 10) : null;
   }
+  function extractGoldChangeTag(text) {
+    const m = text.match(/\{"goldChange"\s*:\s*(-?\d+)\}/);
+    return m ? parseInt(m[1], 10) : null;
+  }
   function advanceGameTime(u, hours) {
     const total = (u.gameHour || 8) + hours;
     const dayInc = Math.floor(total / 24);
@@ -6086,7 +6119,9 @@ function AethermoorRPG() {
     t = t.replace(/\{"worldEvent"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"grantAbility"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\{"repChange"\s*:\s*-?\d+\}/g, "");
+    t = t.replace(/\{"goldChange"\s*:\s*-?\d+\}/g, "");
     t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
+    t = t.replace(/\{"suggestions"\s*:[\s\S]*/g, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
     t = t.replace(/```[a-z]*\s*\{"context"\s*:\s*"\w+"\}\s*```/g, "");
@@ -6619,6 +6654,15 @@ function AethermoorRPG() {
       const sign = repChangeTag > 0 ? "+" : "";
       newLog.push({ type: "system", text: `${sign}${repChangeTag} reputation.` });
       queueLevelUpMsg(`${sign}${repChangeTag} Reputation`, 4000);
+    }
+    // Gold change — narrator deducts or grants gold for conversational purchases, fines, rewards
+    const goldChangeTag = extractGoldChangeTag(response);
+    if (goldChangeTag !== null && goldChangeTag !== 0) {
+      const newGold = Math.max(0, (u.gold || 0) + goldChangeTag);
+      u = { ...u, gold: newGold };
+      const sign = goldChangeTag > 0 ? "+" : "";
+      newLog.push({ type: "system", text: `${sign}${goldChangeTag} gold.` });
+      queueLevelUpMsg(`${sign}${goldChangeTag} Gold`, 4000);
     }
     // Overdue appointment check — fire reminder when time has passed
     const overdueEvents = (u.scheduledEvents || []).filter(ev =>
@@ -7417,6 +7461,9 @@ function AethermoorRPG() {
         queueLevelUpMsg(`\u{1F6CC} Wild rest. +${wildHeal} HP.`, 3e3);
       }
       setShopStockKey((k) => k + 1);
+      u = advanceGameTime(u, 7.5);
+      const restFmt = formatGameTime(u.gameHour, u.gameDay);
+      newLog.push({ type: "system", text: `\u{1F550} You wake on Day ${restFmt.day} at ${restFmt.time}.` });
     }
     if (cmdId === "camp") {
       const hasRation = countRations(u.inventory) > 0;
@@ -7448,6 +7495,9 @@ function AethermoorRPG() {
         queueLevelUpMsg(`\u{1F525} No rations. +${campHeal} HP${hasBedroll ? " with bedroll." : "."} Status effects remain.`, 4e3);
       }
       setShopStockKey((k) => k + 1);
+      u = advanceGameTime(u, 6.5);
+      const campFmt = formatGameTime(u.gameHour, u.gameDay);
+      newLog.push({ type: "system", text: `\u{1F550} You wake on Day ${campFmt.day} at ${campFmt.time}.` });
     }
     if (cmdId === "pray") {
       const pct = u.class === "Cleric" || u.class === "Mage" ? 0.35 : 0.25;
