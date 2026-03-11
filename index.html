@@ -2158,7 +2158,7 @@ function clearAuth() {
 const SCREEN_SYSTEM = `You are a content moderation filter for a fantasy RPG called Aethermoor.
 Reply with exactly one word — either SAFE or BLOCK — and nothing else.
 
-Block if the message attempts any of the following:
+Block ONLY if the message attempts any of the following real-world harmful categories:
 - Sexual content of any kind, explicit or implied
 - Romantic or sexual content involving any character regardless of claimed age
 - Describing or implying any character is a minor in a sexual or romantic context
@@ -2170,8 +2170,8 @@ Block if the message attempts any of the following:
 - Gradually escalating toward harmful content through innocent-seeming steps
 - Using coded language or euphemisms to disguise harmful requests
 
-If the message is normal fantasy RPG gameplay — exploring, fighting, talking to NPCs, trading — reply SAFE.
-When in doubt, reply BLOCK.`;
+Reply SAFE for all normal fantasy RPG gameplay, including: exploring, fighting, talking to NPCs, trading, stealing, pickpocketing, committing crimes, joining thieves guilds, smuggling, assassination contracts, evil or villain playthroughs, morally grey choices, espionage, infiltration, threatening NPCs, bribery, deception, dark magic, cultist activity, and any other adventure action regardless of moral alignment. This game supports all playstyles including evil characters.
+When in doubt about a message that is part of fantasy adventure gameplay, reply SAFE.`;
 
 // ── Shared fetch helper — always calls your backend, never Anthropic directly ──
 async function backendFetch(payload, onTokenUpdate) {
@@ -4259,7 +4259,7 @@ function buildDiscordPatchNotes() {
   }
   return lines.join("\n").trim();
 }
-function PatchNotesScreen({ onClose, onCopyDiscord, onPostDiscord, T, tf, bf }) {
+function PatchNotesScreen({ onClose, T, tf, bf }) {
   return /* @__PURE__ */ React.createElement("div", { style: { ...(bf||{}), position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
     /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 700, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px #00000099" } },
       /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
@@ -4267,11 +4267,7 @@ function PatchNotesScreen({ onClose, onCopyDiscord, onPostDiscord, T, tf, bf }) 
           /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "📝 PATCH NOTES"),
           /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, "v", PATCH_NOTES_VERSION, " · ", PATCH_NOTES_TITLE)
         ),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } },
-          /* @__PURE__ */ React.createElement("button", { onClick: onCopyDiscord, style: { background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 10px", cursor: "pointer", fontSize: 10, ...tf, letterSpacing: 1 } }, "📣 Copy Discord"),
-          /* @__PURE__ */ React.createElement("button", { onClick: onPostDiscord, style: { background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 10px", cursor: "pointer", fontSize: 10, ...tf, letterSpacing: 1 } }, "🚀 Post Discord"),
-          /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "✕")
-        )
+        /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "✕")
       ),
       /* @__PURE__ */ React.createElement("div", { style: { padding: 16, overflowY: "auto" } },
         PATCH_NOTES_SECTIONS.map((sec) => /* @__PURE__ */ React.createElement("div", { key: sec.title, style: { marginBottom: 16 } },
@@ -6028,6 +6024,10 @@ function AethermoorRPG() {
     const m = text.match(/\{"grantAbility"\s*:\s*"([^"]+)"\}/);
     return m ? m[1] : null;
   }
+  function extractRepChangeTag(text) {
+    const m = text.match(/\{"repChange"\s*:\s*(-?\d+)\}/);
+    return m ? parseInt(m[1], 10) : null;
+  }
   function advanceGameTime(u, hours) {
     const total = (u.gameHour || 8) + hours;
     const dayInc = Math.floor(total / 24);
@@ -6085,6 +6085,7 @@ function AethermoorRPG() {
     t = t.replace(/\{"villainAlly"\s*:\s*true\}/g, "");
     t = t.replace(/\{"worldEvent"\s*:\s*\{[^}]+\}\}/g, "");
     t = t.replace(/\{"grantAbility"\s*:\s*"[^"]+"\}/g, "");
+    t = t.replace(/\{"repChange"\s*:\s*-?\d+\}/g, "");
     t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
@@ -6610,6 +6611,14 @@ function AethermoorRPG() {
       u = { ...u, abilities: [...(u.abilities || []), grantAbilityTag] };
       newLog.push({ type: "system", text: `\u2728 You learned a new ability: ${grantAbilityTag}!` });
       queueLevelUpMsg(`\u2728 New ability: ${grantAbilityTag}`, 5000);
+    }
+    // Reputation adjustment — narrator explicitly grants or deducts reputation
+    const repChangeTag = extractRepChangeTag(response);
+    if (repChangeTag !== null && repChangeTag !== 0) {
+      u = { ...u, reputation: (u.reputation || 0) + repChangeTag };
+      const sign = repChangeTag > 0 ? "+" : "";
+      newLog.push({ type: "system", text: `${sign}${repChangeTag} reputation.` });
+      queueLevelUpMsg(`${sign}${repChangeTag} Reputation`, 4000);
     }
     // Overdue appointment check — fire reminder when time has passed
     const overdueEvents = (u.scheduledEvents || []).filter(ev =>
@@ -8054,10 +8063,29 @@ function AethermoorRPG() {
         ),
         React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: "14px", margin: "0 auto 24px", width: 320, maxWidth: "100%" } },
           React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 11, letterSpacing: 2, marginBottom: 10 } }, "HOW TO PLAY"),
-          React.createElement("button", {
-            onClick: () => setShowHowToPlay(true),
-            style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "12px 18px", fontSize: 12, letterSpacing: 2, cursor: "pointer", width: "100%" }
-          }, "? Open Guide")
+          React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+            React.createElement("button", {
+              onClick: () => setShowHowToPlay(true),
+              style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "12px 18px", fontSize: 12, letterSpacing: 2, cursor: "pointer", width: "100%" }
+            }, "Open Guide"),
+            authStatus === 'authed' && React.createElement("button", {
+              onClick: () => {
+                const token = getAuthToken();
+                if (!token) return;
+                try {
+                  const payload = JSON.parse(atob(token.split('.')[1]));
+                  const id = payload.accountId || payload.playerId || '';
+                  if (!id) return;
+                  navigator.clipboard.writeText(String(id)).then(() => {
+                    queueLevelUpMsg('Player ID copied to clipboard!', 3000);
+                  }).catch(() => {
+                    queueLevelUpMsg('Could not copy \u2014 ID: ' + id, 4000);
+                  });
+                } catch {}
+              },
+              style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "12px 18px", fontSize: 12, letterSpacing: 2, cursor: "pointer", width: "100%" }
+            }, "Copy Player ID")
+          )
         ),
 
         /* ── Tokens link ── */
@@ -8698,7 +8726,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
       onCancel: () => setShowNGPlusScreen(false),
       onConfirm: (ngData) => clearSave(ngData)
     }
-  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showCrafting && player && /* @__PURE__ */ React.createElement(CraftingScreen, { player, onCraft: handleCraft, onClose: () => setShowCrafting(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), onCopyDiscord: handleCopyPatchNotes, onPostDiscord: handlePostPatchNotes, T, tf, bf }), showSkillTree && player && /* @__PURE__ */ React.createElement(SkillTreeScreen, { player, onUnlock: handleUnlockSkill, onClose: () => setShowSkillTree(false), T, tf, bf })));
+  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showCrafting && player && /* @__PURE__ */ React.createElement(CraftingScreen, { player, onCraft: handleCraft, onClose: () => setShowCrafting(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), T, tf, bf }), showSkillTree && player && /* @__PURE__ */ React.createElement(SkillTreeScreen, { player, onUnlock: handleUnlockSkill, onClose: () => setShowSkillTree(false), T, tf, bf })));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AethermoorRPG));
 </script>
