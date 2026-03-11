@@ -982,6 +982,46 @@ function calcPlayerAttack(player, enemy, cmdId, isDefending) {
     isDefending = true;
   }
   if (isCrit) baseDmg = Math.floor(baseDmg * 2);
+  // ── Skill tree passives (offensive) ──────────────────────────────────────
+  const sk = player.unlockedSkills || [];
+  // Shadowstep / Assassinate: first-turn bonuses
+  if (enemy.turnCount === 0) {
+    if (sk.includes("shadowstep") && cmdId === "attack") baseDmg = Math.round(baseDmg * 1.5);
+    if (sk.includes("assassinate") && !isCrit) { isCrit = false; baseDmg = Math.floor(baseDmg * 2); } // already a crit-level hit
+  }
+  // Blade Dance: 20% chance to double damage on basic attack
+  if (sk.includes("blade_dance") && cmdId === "attack" && Math.random() < 0.2) baseDmg *= 2;
+  // Crushing Blow: 20% chance for 150% damage on attack
+  if (sk.includes("crushing_blow") && cmdId === "attack" && Math.random() < 0.2) baseDmg = Math.round(baseDmg * 1.5);
+  // Berserker Rage: +50% damage when below 30% HP
+  if (sk.includes("berserker_rage") && player.hp < player.maxHp * 0.3 && cmdId === "attack") baseDmg = Math.round(baseDmg * 1.5);
+  // Battle Hardened: +4 damage when below 50% HP
+  if (sk.includes("battle_hardened") && player.hp < player.maxHp * 0.5 && (cmdId === "attack" || cmdId === "defend")) baseDmg += 4;
+  // Arcane Surge: +20% ability damage (Mage)
+  if (sk.includes("arcane_surge") && cmdId === "ability") baseDmg = Math.round(baseDmg * 1.2);
+  // Meteor Strike: +50% ability damage, always burns
+  if (sk.includes("meteor_strike") && cmdId === "ability") { baseDmg = Math.round(baseDmg * 1.5); statusApplied = "burning"; }
+  // Chain Lightning: ability also burns (if no status yet)
+  if (sk.includes("chain_lightning") && cmdId === "ability" && !statusApplied) statusApplied = "burning";
+  // Blessed Strikes: +15% attack damage, +30% vs undead
+  if (sk.includes("blessed_strikes") && cmdId === "attack") {
+    const isUndead = ["skeleton", "zombie"].includes(enemy.baseArchetypeId || enemy.archetypeId);
+    baseDmg = Math.round(baseDmg * (isUndead ? 1.3 : 1.15));
+  }
+  // Smite Evil: Cleric ability +30% and stun vs undead
+  if (sk.includes("smite_evil") && cmdId === "ability" && player.class === "Cleric") {
+    const isUndead = ["skeleton", "zombie"].includes(enemy.baseArchetypeId || enemy.archetypeId);
+    if (isUndead) { baseDmg = Math.round(baseDmg * 1.3); statusApplied = "stunned"; }
+  }
+  // Frost Touch: 30% chance to freeze on attack
+  if (sk.includes("frost_touch") && cmdId === "attack" && Math.random() < 0.3 && !statusApplied) statusApplied = "frozen";
+  // Crippling Strike: 25% chance to poison on attack
+  if (sk.includes("crippling_strike") && cmdId === "attack" && Math.random() < 0.25 && !statusApplied) statusApplied = "poisoned";
+  // War Cry: 30% chance to stun on attack
+  if (sk.includes("war_cry") && cmdId === "attack" && Math.random() < 0.3 && !statusApplied) statusApplied = "stunned";
+  // Avatar of the Divine: triple ability damage when below 25% HP
+  if (sk.includes("avatar_divine") && cmdId === "ability" && player.hp < player.maxHp * 0.25) baseDmg *= 3;
+  // ─────────────────────────────────────────────────────────────────────────
   const ignoresDef = cmdId === "ability" && player.class === "Mage";
   const finalDmg = Math.max(1, baseDmg - (ignoresDef ? 0 : enemy.def));
   return { playerDmg: finalDmg, isCrit, statusApplied, isDefending, abilityName };
@@ -1027,6 +1067,26 @@ function calcEnemyAttack(enemy, player, playerIsDefending) {
   if (hasWarHardened) finalDmg = Math.ceil(finalDmg * 0.8);
   let statusApplied = null;
   if (enemy.traits?.includes("envenomed") && Math.random() < 0.35) statusApplied = "poisoned";
+  // ── Skill tree passives (defensive) ──────────────────────────────────────
+  const psk = player.unlockedSkills || [];
+  // Warlord's Presence: 15% chance enemy misses
+  if (psk.includes("warlords_presence") && Math.random() < 0.15) return { enemyDmg: 0, enemySpecial: "warlord_miss", statusApplied: null };
+  // Evasive: 15% dodge
+  if (psk.includes("evasive") && Math.random() < 0.15) return { enemyDmg: 0, enemySpecial: "dodged", statusApplied: null };
+  // Ghost Walk: 25% full negate
+  if (psk.includes("ghost_walk") && Math.random() < 0.25) return { enemyDmg: 0, enemySpecial: "ghost_walk", statusApplied: null };
+  // Toughness: -1 flat damage
+  if (psk.includes("toughness")) finalDmg = Math.max(0, finalDmg - 1);
+  // Divine Resilience: -10% damage
+  if (psk.includes("divine_resilience")) finalDmg = Math.ceil(finalDmg * 0.9);
+  // Archmage's Will: -15% damage
+  if (psk.includes("archmages_will")) finalDmg = Math.ceil(finalDmg * 0.85);
+  // Warding Presence / Consecrate: resist status effects
+  if (statusApplied) {
+    const resistChance = (psk.includes("consecrate") ? 0.4 : 0) + (psk.includes("warding_presence") ? 0.2 : 0);
+    if (resistChance > 0 && Math.random() < resistChance) statusApplied = null;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
   return { enemyDmg: Math.max(0, finalDmg), enemySpecial, statusApplied };
 }
 function shouldEnemyFlee(enemy) {
@@ -1043,7 +1103,8 @@ function calcFlee(player, enemy) {
   const hasGhost = activeSets.some((s) => s.ability === "Ghost");
   const hasSeaLegs = activeSets.some((s) => s.ability === "Sea Legs");
   const hasShadowWalker = (player.legacyPerks || []).includes("shadow_walker");
-  if (hasGhost || hasSeaLegs || hasShadowWalker) return { success: true, freehit: false };
+  const hasSmokeBomb = (player.unlockedSkills || []).includes("smoke_bomb");
+  if (hasGhost || hasSeaLegs || hasShadowWalker || hasSmokeBomb) return { success: true, freehit: false };
   if (enemy.style === "relentless") return { success: agi > enemy.agi + d6() + 2, freehit: true };
   return { success: agi + d6() > enemy.agi, freehit: !(agi + d6() > enemy.agi) };
 }
@@ -2028,6 +2089,10 @@ const INIT_PLAYER = (name, cls) => ({
   // [{npcName, location, day, hour, description}]
   bestiary: [],
   // [{archetypeId, name, icon, tier, timesKilled, firstKilledDay, lastKilledDay}]
+  unlockedSkills: [],
+  // skill IDs unlocked from the skill tree
+  skillPoints: 0,
+  // available skill points (earned on level-up)
 });
 // ── Backend URL ──────────────────────────────────────────────────────────
 // Live Railway server — update this if the backend URL ever changes.
@@ -2855,7 +2920,44 @@ function generateMainQuestSeed() {
   };
 }
 async function generateWorldSeed() {
-  return generateMainQuestSeed();
+  const seed = generateMainQuestSeed();
+  const travelMatrix = await generateTravelMatrix();
+  if (travelMatrix) seed.travelMatrix = travelMatrix;
+  return seed;
+}
+async function generateTravelMatrix() {
+  // Use capital + cities only (7 settlements = 21 pairs) — compact enough for the narrator prompt
+  const keySettlements = WORLD_DATA
+    .filter(s => ["capital", "city"].includes(s.type))
+    .map(s => s.name);
+  const prompt = `You are a fantasy world geographer for "Aethermoor". Generate realistic medieval travel data between these settlements: ${keySettlements.join(", ")}.
+
+Rules:
+- Aethermoor Capital is the largest and most central city
+- Travel times are in hours on foot at walking pace
+- Distances should feel medieval: short hops 6-16 hours, long cross-country 20-60 hours
+- Be geographically consistent (triangle inequality — if A→B is 8h and B→C is 6h, A→C should be roughly 10-12h)
+- Invent a geography: some routes follow rivers (river barge available), some are coastal (sea boat available), most are just road or track
+- Each settlement gets a geography note: whether it sits on a river, a coast, or neither
+
+Reply ONLY with valid compact JSON, no markdown:
+{
+  "routes": [
+    {"from":"Name","to":"Name","hours":12,"terrain":"road","river":false,"coast":false}
+  ],
+  "geography": {
+    "Name": {"river":true,"coast":false,"note":"sits on the River Aldren"}
+  }
+}
+
+Generate one route entry for every unique pair. Geography note is optional (max 8 words).`;
+  try {
+    const res = await callClaude([{ role: "user", content: prompt }], "You are a fantasy world geographer. Reply only with valid compact JSON, no markdown, no explanation.");
+    const data = JSON.parse(res.replace(/```json|```/g, "").trim());
+    return { routes: data.routes || [], geography: data.geography || {}, settlements: keySettlements };
+  } catch (e) {
+    return null;
+  }
 }
 const FACTION_RANKS = ["Outsider", "Initiate", "Member", "Trusted", "Champion", "Legend"];
 const FACTION_XP_NEEDED = [0, 80, 200, 400, 700, 1100];
@@ -3838,31 +3940,111 @@ function BestiaryScreen({ player, onClose, T, tf, bf }) {
     )
   );
 }
-const PATCH_NOTES_VERSION = "0.2.0";
-const PATCH_NOTES_TITLE = "Bestiary & Cloud Saves";
+const PATCH_NOTES_VERSION = "0.3.0";
+const PATCH_NOTES_TITLE = "Skill Trees";
 const PATCH_NOTES_SECTIONS = [
   {
-    title: "Added",
+    title: "New — Skill Trees",
     items: [
-      "Bestiary with kill tracking, type discovery, and detail expansion.",
-      "Cloud save endpoints with authenticated upload/download.",
-      "Enemy variant system for 100+ distinct enemy-type discoveries."
+      "Each class now has a unique skill tree with 9 unlockable abilities across 3 tiers.",
+      "Earn +1 Skill Point every time you level up — open the 🌿 Skills button to spend it.",
+      "Tiers unlock based on your class's primary stat: Tier 1 at 8, Tier 2 at 14, Tier 3 at 20.",
+      "Warriors: Iron Skin → Crushing Blow → Berserker Rage and more.",
+      "Rogues: Shadowstep → Blade Dance → Master Thief (doubles all gold earned).",
+      "Mages: Arcane Surge → Chain Lightning → Archmage's Will and more.",
+      "Clerics: Healing Light → Smite Evil → Resurrection Light (survive death once per dungeon).",
+      "Mastery-tier skills (T3) change how the world reacts to you — the narrator notices.",
     ]
   },
   {
     title: "Changed",
     items: [
-      "Game load now checks cloud save first when signed in.",
-      "DM prompt now includes kill history summary when available."
-    ]
-  },
-  {
-    title: "Fixed",
-    items: [
-      "Undead stun interactions remain correct with enemy variants."
+      "Level-up now grants +1 Skill Point alongside the existing +3 Stat Points.",
     ]
   }
 ];
+const SKILL_TREES = {
+  Warrior: {
+    primaryStat: "str",
+    tiers: [
+      { threshold: 8, skills: [
+        { id: "iron_skin", name: "Iron Skin", icon: "🛡️", flavour: "Years of hard training have left your body as durable as armour itself.", effect: "Passive: +10% max HP" },
+        { id: "war_cry", name: "War Cry", icon: "📣", flavour: "A bellowing roar that shakes the confidence of lesser foes.", effect: "Auto: 30% chance on attack to reduce enemy effectiveness" },
+        { id: "toughness", name: "Toughness", icon: "💪", flavour: "You've taken more beatings than most men have had hot meals.", effect: "Passive: Reduce all incoming damage by 1" },
+      ]},
+      { threshold: 14, skills: [
+        { id: "crushing_blow", name: "Crushing Blow", icon: "⚡", flavour: "You put every ounce of your weight behind the strike — bones crack.", effect: "Auto: 20% chance for 150% damage on attack" },
+        { id: "endure", name: "Endure", icon: "❤️", flavour: "Pain is just weakness leaving the body.", effect: "Passive: Survive one killing blow per combat at 1 HP" },
+        { id: "battle_hardened", name: "Battle Hardened", icon: "🔥", flavour: "The chaos of battle no longer rattles you — it focuses you.", effect: "Passive: +4 damage when below 50% HP" },
+      ]},
+      { threshold: 20, skills: [
+        { id: "berserker_rage", name: "Berserker Rage", icon: "😤", flavour: "The line between warrior and beast blurs. You become something terrifying.", effect: "Auto: +50% damage when below 30% HP" },
+        { id: "unbreakable", name: "Unbreakable", icon: "🏔️", flavour: "You have stared death in the face so many times it bores you.", effect: "Passive: Heal 3 HP at start of each combat turn" },
+        { id: "warlords_presence", name: "Warlord's Presence", icon: "👑", flavour: "Your very presence on the battlefield changes the nature of the fight.", effect: "Passive: 15% chance enemies miss entirely" },
+      ]},
+    ]
+  },
+  Rogue: {
+    primaryStat: "agi",
+    tiers: [
+      { threshold: 8, skills: [
+        { id: "shadowstep", name: "Shadowstep", icon: "🌑", flavour: "You move between patches of darkness like smoke between the fingers.", effect: "Passive: First attack each combat deals +50% damage" },
+        { id: "pickpocket", name: "Pickpocket", icon: "💰", flavour: "Coin has a way of finding its way to your pocket.", effect: "Passive: Gain 1-3 gold each combat turn" },
+        { id: "evasive", name: "Evasive", icon: "💨", flavour: "You've never been hit by anything you saw coming.", effect: "Passive: 15% chance to dodge incoming damage" },
+      ]},
+      { threshold: 14, skills: [
+        { id: "crippling_strike", name: "Crippling Strike", icon: "🩸", flavour: "One well-placed cut and they'll be limping for a week.", effect: "Auto: 25% chance to poison enemy on attack" },
+        { id: "smoke_bomb", name: "Smoke Bomb", icon: "💨", flavour: "Darkness is your oldest ally.", effect: "Passive: Flee always succeeds without a free hit" },
+        { id: "blade_dance", name: "Blade Dance", icon: "⚔️", flavour: "Your movements are so fluid it's hard to tell where the person ends and the blade begins.", effect: "Passive: 20% chance to strike twice on attack" },
+      ]},
+      { threshold: 20, skills: [
+        { id: "assassinate", name: "Assassinate", icon: "🎯", flavour: "You don't fight enemies. You end them.", effect: "Passive: First attack each combat is always a critical hit" },
+        { id: "ghost_walk", name: "Ghost Walk", icon: "👻", flavour: "They swear they hit you. They're not entirely wrong.", effect: "Passive: 25% chance to completely negate any hit" },
+        { id: "master_thief", name: "Master Thief", icon: "💎", flavour: "You could steal the crown off a king's head while shaking his hand.", effect: "Passive: Double gold from all enemies" },
+      ]},
+    ]
+  },
+  Mage: {
+    primaryStat: "int",
+    tiers: [
+      { threshold: 8, skills: [
+        { id: "arcane_surge", name: "Arcane Surge", icon: "✨", flavour: "You feel the ley lines beneath your feet and pull from them greedily.", effect: "Passive: +20% damage on class ability" },
+        { id: "frost_touch", name: "Frost Touch", icon: "❄️", flavour: "Your fingers trail ice crystals when you're truly focused.", effect: "Auto: 30% chance to freeze enemy on attack" },
+        { id: "mana_shield", name: "Mana Shield", icon: "🔵", flavour: "Arcane energy wraps around you like a second skin.", effect: "Passive: Once per combat, negate up to 15 incoming damage" },
+      ]},
+      { threshold: 14, skills: [
+        { id: "chain_lightning", name: "Chain Lightning", icon: "⚡", flavour: "The bolt finds one target, then hunts for another.", effect: "Passive: Ability attacks also apply burning status" },
+        { id: "arcane_mind", name: "Arcane Mind", icon: "🧠", flavour: "Your mind has expanded beyond what most humans experience.", effect: "Passive: +2 INT permanently on unlock" },
+        { id: "elemental_affinity", name: "Elemental Affinity", icon: "🌊", flavour: "Fire, frost, storm — you speak all their languages.", effect: "Passive: Status effects you inflict deal +2 damage per tick" },
+      ]},
+      { threshold: 20, skills: [
+        { id: "meteor_strike", name: "Meteor Strike", icon: "☄️", flavour: "You reach up, grab a piece of the sky, and bring it down.", effect: "Passive: Ability deals +50% damage and always burns" },
+        { id: "time_slip", name: "Time Slip", icon: "⏰", flavour: "For just a moment, you step slightly out of the present.", effect: "Passive: 20% chance your attack skips the enemy's counterattack" },
+        { id: "archmages_will", name: "Archmage's Will", icon: "🔮", flavour: "Lesser minds flinch before yours. The world bends to your intention.", effect: "Passive: Enemies deal -15% damage to you" },
+      ]},
+    ]
+  },
+  Cleric: {
+    primaryStat: "wil",
+    tiers: [
+      { threshold: 8, skills: [
+        { id: "healing_light", name: "Healing Light", icon: "💛", flavour: "A warm golden glow settles over your wounds and knits flesh.", effect: "Passive: Heal 5% max HP each time you kill an enemy" },
+        { id: "blessed_strikes", name: "Blessed Strikes", icon: "✝️", flavour: "Your weapon carries the weight of divine judgement.", effect: "Passive: +15% damage; undead enemies take +30% instead" },
+        { id: "warding_presence", name: "Warding Presence", icon: "🛡️", flavour: "Something about you makes evil things hesitant.", effect: "Passive: 20% chance to resist any status effect" },
+      ]},
+      { threshold: 14, skills: [
+        { id: "smite_evil", name: "Smite Evil", icon: "⚡", flavour: "You channel every ounce of righteous fury into a single, devastating strike.", effect: "Passive: Ability deals +30% vs undead and stuns them" },
+        { id: "consecrate", name: "Consecrate", icon: "✨", flavour: "The ground beneath your feet becomes holy. Darkness cannot linger here.", effect: "Passive: 40% chance to resist any status effect on application" },
+        { id: "divine_resilience", name: "Divine Resilience", icon: "💫", flavour: "Pain is a test. You've passed it before.", effect: "Passive: Reduce all incoming damage by 10%" },
+      ]},
+      { threshold: 20, skills: [
+        { id: "resurrection_light", name: "Resurrection Light", icon: "☀️", flavour: "You pour your faith into the body and demand it obey.", effect: "Passive: Once per dungeon descent, survive death at 10% HP" },
+        { id: "aura_of_sanctity", name: "Aura of Sanctity", icon: "😇", flavour: "A visible shimmer surrounds you — even the faithless feel it.", effect: "Passive: +15% max HP" },
+        { id: "avatar_divine", name: "Avatar of the Divine", icon: "👼", flavour: "In this moment, you are not merely a priest. You are a vessel.", effect: "Passive: When below 25% HP, ability deals triple damage" },
+      ]},
+    ]
+  }
+};
 function buildDiscordPatchNotes() {
   const lines = [`**Aethermoor Patch v${PATCH_NOTES_VERSION} — ${PATCH_NOTES_TITLE}**`, ""];
   for (const sec of PATCH_NOTES_SECTIONS) {
@@ -3893,6 +4075,54 @@ function PatchNotesScreen({ onClose, onCopyDiscord, onPostDiscord, T, tf, bf }) 
             sec.items.map((item, i) => /* @__PURE__ */ React.createElement("li", { key: i, style: { marginBottom: 6, color: T.text, fontSize: 14, lineHeight: 1.5 } }, item))
           )
         ))
+      )
+    )
+  );
+}
+function SkillTreeScreen({ player, onUnlock, onClose, T, tf, bf }) {
+  const tree = SKILL_TREES[player.class];
+  if (!tree) return null;
+  const unlocked = player.unlockedSkills || [];
+  const skillPoints = player.skillPoints || 0;
+  const primaryStat = player[tree.primaryStat] || 0;
+  const unlockedPerTier = tree.tiers.map(tier => tier.skills.filter(s => unlocked.includes(s.id)).length);
+  return /* @__PURE__ */ React.createElement("div", { style: { ...(bf||{}), position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
+    /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 700, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px #00000099" } },
+      /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+        /* @__PURE__ */ React.createElement("div", null,
+          /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "\uD83C\uDF3F SKILL TREE \u2014 ", player.class.toUpperCase()),
+          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, skillPoints, " skill point", skillPoints !== 1 ? "s" : "", " available \xB7 ", tree.primaryStat.toUpperCase(), ": ", primaryStat)
+        ),
+        /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "\u2715")
+      ),
+      /* @__PURE__ */ React.createElement("div", { style: { padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 } },
+        tree.tiers.map((tier, tierIdx) => {
+          const tierStatOk = primaryStat >= tier.threshold;
+          const prevOk = tierIdx === 0 || unlockedPerTier[tierIdx - 1] > 0;
+          const accessible = tierStatOk && prevOk;
+          return /* @__PURE__ */ React.createElement("div", { key: tierIdx },
+            /* @__PURE__ */ React.createElement("div", { style: { ...tf, fontSize: 11, letterSpacing: 2, color: accessible ? T.accent : T.textFaint, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 } },
+              "TIER ", tierIdx + 1,
+              /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted } }, "(", tree.primaryStat.toUpperCase(), " \u2265 ", tier.threshold, tierIdx > 0 ? ", unlock Tier " + tierIdx + " first" : "", ")"),
+              !accessible && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "#c04040" } }, "\uD83D\uDD12 Locked")
+            ),
+            /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+              tier.skills.map(skill => {
+                const isUnlocked = unlocked.includes(skill.id);
+                const canUnlock = accessible && !isUnlocked && skillPoints > 0;
+                return /* @__PURE__ */ React.createElement("div", { key: skill.id, style: { background: isUnlocked ? T.accent + "22" : T.panelAlt, border: `1px solid ${isUnlocked ? T.gold : canUnlock ? T.accent : T.border}`, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 12, opacity: accessible ? 1 : 0.45 } },
+                  /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, lineHeight: 1, flexShrink: 0 } }, skill.icon),
+                  /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                    /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: isUnlocked ? T.gold : T.text, fontSize: 13, marginBottom: 2 } }, skill.name, isUnlocked && /* @__PURE__ */ React.createElement("span", { style: { color: "#60c060", fontSize: 10, marginLeft: 8 } }, "\u2713 LEARNED")),
+                    /* @__PURE__ */ React.createElement("div", { style: { color: T.textMuted, fontSize: 11, fontStyle: "italic", marginBottom: 4 } }, "\u201C", skill.flavour, "\u201D"),
+                    /* @__PURE__ */ React.createElement("div", { style: { color: T.accent, fontSize: 11 } }, skill.effect)
+                  ),
+                  canUnlock && /* @__PURE__ */ React.createElement("button", { onClick: () => onUnlock(skill.id), style: { background: T.accent + "33", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", cursor: "pointer", fontSize: 11, ...tf, letterSpacing: 1, whiteSpace: "nowrap", flexShrink: 0 } }, "Unlock (1pt)")
+                );
+              })
+            )
+          );
+        })
       )
     )
   );
@@ -5221,6 +5451,7 @@ function AethermoorRPG() {
   const [showQuestLog, setShowQuestLog] = useState(false);
   const [showBestiary, setShowBestiary] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [showSkillTree, setShowSkillTree] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [shopStockKey, setShopStockKey] = useState(0);
@@ -5452,8 +5683,8 @@ function AethermoorRPG() {
     let u = { ...p, xp: newXp, level: newLvl };
     if (newLvl > p.level) {
       const maxHp = hpForLevel(CLASSES[p.class].hp, newLvl);
-      u = { ...u, maxHp, hp: Math.min(p.hp + 10, maxHp), statPoints: (p.statPoints || 0) + 3 };
-      queueLevelUpMsg(`\u{1F31F} LEVEL UP! Now level ${newLvl}! +3 Stat Points!`, 5e3);
+      u = { ...u, maxHp, hp: Math.min(p.hp + 10, maxHp), statPoints: (p.statPoints || 0) + 3, skillPoints: (p.skillPoints || 0) + 1 };
+      queueLevelUpMsg(`\u{1F31F} LEVEL UP! Now level ${newLvl}! +3 Stat Points, +1 Skill Point!`, 5e3);
     }
     return u;
   }
@@ -5825,6 +6056,16 @@ function AethermoorRPG() {
     setPlayer(u);
     saveGame(u, worldSeed, messages, narrative, log);
   }
+  function handleUnlockSkill(skillId) {
+    if (!player || (player.skillPoints || 0) < 1) return;
+    let u = { ...player, unlockedSkills: [...(player.unlockedSkills || []), skillId], skillPoints: (player.skillPoints || 0) - 1 };
+    // Apply immediate stat changes on unlock
+    if (skillId === "iron_skin") { const bonus = Math.round(u.maxHp * 0.1); u = { ...u, maxHp: u.maxHp + bonus, hp: Math.min(u.hp + bonus, u.maxHp + bonus) }; }
+    if (skillId === "aura_of_sanctity") { const bonus = Math.round(u.maxHp * 0.15); u = { ...u, maxHp: u.maxHp + bonus, hp: Math.min(u.hp + bonus, u.maxHp + bonus) }; }
+    if (skillId === "arcane_mind") u = { ...u, int: u.int + 2 };
+    setPlayer(u);
+    saveGame(u, worldSeed, messages, narrative, log);
+  }
   async function handleCommand(cmdId) {
     if (isLoading) return;
     setSuggestions([]);
@@ -6016,6 +6257,12 @@ function AethermoorRPG() {
       if (gold) u = { ...u, gold: u.gold + parseInt(gold[1]) };
     }
     if (u.hp <= 0) {
+      // Resurrection Light: survive death once per dungeon descent at 10% HP
+      if ((u.unlockedSkills || []).includes("resurrection_light") && !u._resurrectionUsed && u.dungeon) {
+        u = { ...u, hp: Math.round(u.maxHp * 0.1), _resurrectionUsed: true };
+        queueLevelUpMsg(`☀️ Resurrection Light! Death denied — you rise with ${Math.round(u.maxHp * 0.1)} HP!`, 6e3);
+        newLog.push({ type: "system", text: "☀️ Resurrection Light activated — death denied!" });
+      } else {
       u = { ...u, hp: 0, isDead: true };
       if (u.dungeon?.loot?.length > 0) {
         const lostCount = u.dungeon.loot.length;
@@ -6065,6 +6312,7 @@ function AethermoorRPG() {
       }
       setIsLoading(false);
       return;
+      } // end else (resurrection not active)
     }
     const classFactionMap = { Warrior: "iron_conclave", Rogue: "shadowmere_guild", Mage: "ember_circle", Cleric: "silver_hand" };
     const myClassFaction = classFactionMap[u.class];
@@ -6196,7 +6444,22 @@ function AethermoorRPG() {
               const bsDmg = (u.legacyPerks || []).includes("battle_scarred") ? Math.max(1, Math.round(enemyDmg * 0.9)) : enemyDmg;
               u = { ...u, hp: Math.max(0, u.hp - bsDmg) };
               enemyDmg = bsDmg;
+              // Endure: survive killing blow once per combat at 1 HP
+              if (u.hp <= 0 && (u.unlockedSkills || []).includes("endure") && !u._endureUsed) {
+                u = { ...u, hp: 1, _endureUsed: true };
+                setCombatLog((prev) => [...prev.slice(-4), `❤️ Endure! You survived on 1 HP!`]);
+              }
+              // Mana Shield: absorb up to 15 damage once per combat
+              if (bsDmg > 0 && (u.unlockedSkills || []).includes("mana_shield") && !u._manaShieldUsed) {
+                const absorbed = Math.min(15, bsDmg);
+                u = { ...u, hp: Math.min(u.maxHp, u.hp + absorbed), _manaShieldUsed: true };
+                setCombatLog((prev) => [...prev.slice(-4), `🔵 Mana Shield absorbed ${absorbed} damage!`]);
+              }
             }
+            // Unbreakable: heal 3 HP per turn
+            if ((u.unlockedSkills || []).includes("unbreakable")) u = { ...u, hp: Math.min(u.maxHp, u.hp + 3) };
+            // Pickpocket: gain 1-3 gold per combat turn
+            if ((u.unlockedSkills || []).includes("pickpocket")) u = { ...u, gold: u.gold + 1 + Math.floor(Math.random() * 3) };
             if (statusOnPlayer && !pStatus.includes(statusOnPlayer)) {
               pStatus = [...pStatus, statusOnPlayer];
               setPlayerStatusEffects(pStatus);
@@ -6212,9 +6475,15 @@ function AethermoorRPG() {
         }
         if (updatedEnemy.hp <= 0) {
           const xpGained = updatedEnemy.xpReward;
-          const goldGained = updatedEnemy.goldReward;
+          let goldGained = updatedEnemy.goldReward;
+          // Master Thief: double gold
+          if ((u.unlockedSkills || []).includes("master_thief")) goldGained *= 2;
           u = grantXP(u, xpGained);
           u = { ...u, gold: u.gold + goldGained };
+          // Healing Light: heal 5% max HP on kill
+          if ((u.unlockedSkills || []).includes("healing_light")) u = { ...u, hp: Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.05)) };
+          // Reset per-combat flags
+          u = { ...u, _endureUsed: false, _manaShieldUsed: false };
           u = grantFactionXP(u, myClassFaction, 15);
           u = { ...u, reputation: (u.reputation || 0) + 3 };
           u = grantLocationXP(u, u.location, 8);
@@ -7854,6 +8123,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
     ["town", "npc"].includes(player?.context) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowShop(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F6D2} Shop"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowInventory(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F392} Gear"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuestLog(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\u{1F4DC} Quests", (player?.quests || []).filter((q) => q.status === "active").length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.quests || []).filter((q) => q.status === "active").length)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowStandings(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u2B50 Rep"),
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBestiary(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\u{1F4D6} Bestiary", (player?.bestiary || []).length > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#c04040", color: "#fff", borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.bestiary || []).length)),
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPatchNotes(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\u{1F4DD} Patch"),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setShowSkillTree(true), style: { background: "transparent", border: `1px solid ${T.accent}`, color: T.gold, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1, position: "relative" } }, "\uD83C\uDF3F Skills", (player?.skillPoints || 0) > 0 && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#60a060", color: "#fff", borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, player.skillPoints)),
       /* @__PURE__ */ React.createElement("button", {
         onClick: () => player?.location === "Aethermoor Capital" && !player?.dungeon ? setDungeonWarningOpen(true) : null,
         title: player?.location === "Aethermoor Capital" ? (player?.dungeon ? "Already in the dungeon" : "Enter the Dungeon of Echoes") : "Travel to Aethermoor Capital to access the Dungeon of Echoes",
@@ -7903,7 +8173,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
       onCancel: () => setShowNGPlusScreen(false),
       onConfirm: (ngData) => clearSave(ngData)
     }
-  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), onCopyDiscord: handleCopyPatchNotes, onPostDiscord: handlePostPatchNotes, T, tf, bf }));
+  ), showFactionOffer && player && /* @__PURE__ */ React.createElement(FactionOfferModal, { factionId: showFactionOffer, player, onJoin: handleJoinFaction, onDecline: handleDeclineFaction, onRival: handleRivalFaction, T, tf, bf }), showQuestLog && player && /* @__PURE__ */ React.createElement(QuestLogScreen, { player, onClose: () => setShowQuestLog(false), onDismiss: handleDismissQuest, T, tf, bf, worldSeed }), showBestiary && player && /* @__PURE__ */ React.createElement(BestiaryScreen, { player, onClose: () => setShowBestiary(false), T, tf, bf }), showPatchNotes && /* @__PURE__ */ React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), onCopyDiscord: handleCopyPatchNotes, onPostDiscord: handlePostPatchNotes, T, tf, bf }), showSkillTree && player && /* @__PURE__ */ React.createElement(SkillTreeScreen, { player, onUnlock: handleUnlockSkill, onClose: () => setShowSkillTree(false), T, tf, bf })));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AethermoorRPG));
 </script>
