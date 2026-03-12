@@ -5920,6 +5920,7 @@ function AethermoorRPG() {
                   body: JSON.stringify({ claimedFloor: p.dungeon.floor }),
                 }).catch(() => {});
               }
+              p.bestiary = pruneBestiary(p.bestiary || []);
               const ws = resolveSettlements(seed); if (ws) applyCanonicalWorld(ws);
               setPlayer(p); setWorldSeed(seed); setMessages(msgs); setNarrative(narr); setLog(lg);
               setScreen("game");
@@ -5949,6 +5950,7 @@ function AethermoorRPG() {
           const msgs = mRaw?.value ? JSON.parse(mRaw.value) : [];
           const narr = nRaw?.value || "";
           const lg   = lRaw?.value ? JSON.parse(lRaw.value) : [];
+          p.bestiary = pruneBestiary(p.bestiary || []);
           const _ws = resolveSettlements(seed); if (_ws) applyCanonicalWorld(_ws);
           setPlayer(p);
           setWorldSeed(seed);
@@ -6225,6 +6227,18 @@ function AethermoorRPG() {
       const arr = JSON.parse(m[1]);
       return Array.isArray(arr) ? arr : null;
     } catch { return null; }
+  }
+  function pruneBestiary(bestiary) {
+    if (!Array.isArray(bestiary) || bestiary.length <= 50) return bestiary;
+    // Separate high-tier (veteran/boss) from low-tier (minion/standard)
+    const highTier = bestiary.filter(b => b.tier === 'veteran' || b.tier === 'boss');
+    const lowTier = bestiary.filter(b => b.tier !== 'veteran' && b.tier !== 'boss');
+    // Sort low-tier by lastKilledDay descending (newest first)
+    const recentLowTier = lowTier
+      .sort((a, b) => (b.lastKilledDay || 0) - (a.lastKilledDay || 0))
+      .slice(0, Math.max(0, 50 - highTier.length));
+    // Return high-tier always + recent low-tier to stay under 50
+    return [...highTier, ...recentLowTier];
   }
   function advanceGameTime(u, hours) {
     const total = (u.gameHour || 8) + hours;
@@ -7182,6 +7196,7 @@ function AethermoorRPG() {
               lastKilledDay: u.gameDay
             }]};
           }
+          u = { ...u, bestiary: pruneBestiary(u.bestiary || []) };
           if (updatedEnemy.isFinalBoss) {
             const updSeed = {
               ...worldSeed,
