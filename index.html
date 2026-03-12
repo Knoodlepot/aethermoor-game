@@ -1927,6 +1927,42 @@ WORLD_DATA.forEach(d => {
   else if (d.isPOI) LOCATION_TIERS[d.name] = 'poi';
   else LOCATION_TIERS[d.name] = 'village';
 });
+function applyCanonicalWorld(settlements) {
+  const typeCounters = {};
+  for (const saved of settlements) {
+    const t = saved.type;
+    if (typeCounters[t] === undefined) typeCounters[t] = 0;
+    let count = 0;
+    for (const entry of WORLD_DATA) {
+      if (entry.type === t) {
+        if (count === typeCounters[t]) {
+          entry.name = saved.name;
+          entry.mapX = saved.mapX;
+          entry.mapY = saved.mapY;
+          break;
+        }
+        count++;
+      }
+    }
+    typeCounters[t]++;
+  }
+  Object.keys(LOCATION_TIERS).forEach(k => delete LOCATION_TIERS[k]);
+  WORLD_DATA.forEach(d => {
+    if (d.type === 'capital')   LOCATION_TIERS[d.name] = 'capital';
+    else if (d.type === 'city') LOCATION_TIERS[d.name] = 'city';
+    else if (d.type === 'town') LOCATION_TIERS[d.name] = 'town';
+    else if (d.isPOI)           LOCATION_TIERS[d.name] = 'poi';
+    else                        LOCATION_TIERS[d.name] = 'village';
+  });
+}
+function resolveSettlements(seed) {
+  if (seed.worldSettlements) return seed.worldSettlements;
+  const lg = seed.travelMatrix?.locationGrid;
+  if (!lg) return null;
+  return Object.entries(lg)
+    .filter(([, v]) => ['capital','city','town','village','hamlet'].includes(v.type))
+    .map(([name, v]) => ({ name, type: v.type, mapX: v.x, mapY: v.y }));
+}
 const WEATHER_ICONS = { clear: "\u2600\uFE0F", overcast: "\u{1F325}\uFE0F", rain: "\u{1F327}\uFE0F", storm: "\u26C8\uFE0F" };
 const WEATHER_DESC = {
   clear: "clear skies and fair travelling",
@@ -5773,6 +5809,7 @@ function AethermoorRPG() {
                   body: JSON.stringify({ claimedFloor: p.dungeon.floor }),
                 }).catch(() => {});
               }
+              const ws = resolveSettlements(seed); if (ws) applyCanonicalWorld(ws);
               setPlayer(p); setWorldSeed(seed); setMessages(msgs); setNarrative(narr); setLog(lg);
               setScreen("game");
               return;
@@ -5801,6 +5838,7 @@ function AethermoorRPG() {
           const msgs = mRaw?.value ? JSON.parse(mRaw.value) : [];
           const narr = nRaw?.value || "";
           const lg   = lRaw?.value ? JSON.parse(lRaw.value) : [];
+          const _ws = resolveSettlements(seed); if (_ws) applyCanonicalWorld(_ws);
           setPlayer(p);
           setWorldSeed(seed);
           setMessages(msgs);
@@ -6136,6 +6174,9 @@ function AethermoorRPG() {
     if (!playerName.trim() || !selClass) return;
     setIsLoading(true);
     const seed = await generateWorldSeed();
+    seed.worldSettlements = WORLD_DATA
+      .filter(d => ['capital','city','town','village','hamlet'].includes(d.type))
+      .map(d => ({ name: d.name, type: d.type, mapX: d.mapX, mapY: d.mapY }));
     const mainQuestEntry = {
       id: "main_" + Date.now(),
       title: seed.questTitle,
@@ -8082,7 +8123,7 @@ function AethermoorRPG() {
                   ),
                   React.createElement("div", { style: { display: "flex", gap: 6 } },
                     saveSlotAction === "load"
-                      ? !empty && React.createElement("button", { onClick: () => { const d=loadSaveSlot(slot); if(d){ const p={...d.player,_saveSlot:slot}; setPlayer(p); setWorldSeed(d.worldSeed); setMessages(d.messages); setNarrative(d.narrative); setLog(d.log); setShowSaveSlots(false); setScreen("game"); } }, style: { ...tf, background: T.accent+"22", border:`1px solid ${T.accent}`, color:T.gold, padding:"6px 12px", fontSize:10, cursor:"pointer", letterSpacing:1 } }, "LOAD")
+                      ? !empty && React.createElement("button", { onClick: () => { const d=loadSaveSlot(slot); if(d){ const p={...d.player,_saveSlot:slot}; const _sws=resolveSettlements(d.worldSeed); if(_sws) applyCanonicalWorld(_sws); setPlayer(p); setWorldSeed(d.worldSeed); setMessages(d.messages); setNarrative(d.narrative); setLog(d.log); setShowSaveSlots(false); setScreen("game"); } }, style: { ...tf, background: T.accent+"22", border:`1px solid ${T.accent}`, color:T.gold, padding:"6px 12px", fontSize:10, cursor:"pointer", letterSpacing:1 } }, "LOAD")
                       : React.createElement("button", { onClick: () => { if(saveSlotAction==="new"){ if(!empty&&!window.confirm("Overwrite Slot "+slot+"?")) return; if(player) writeSaveSlot(slot,player,worldSeed,messages,narrative,log); setShowSaveSlots(false); clearSave(); } else { if(!empty&&!window.confirm("Overwrite Slot "+slot+"?")) return; writeSaveSlot(slot,player,worldSeed,messages,narrative,log); const p2={...player,_saveSlot:slot}; setPlayer(p2); saveGame(p2,worldSeed,messages,narrative,log); setShowSaveSlots(false); } }, style: { ...tf, background:T.accent+"22", border:`1px solid ${T.accent}`, color:T.gold, padding:"6px 12px", fontSize:10, cursor:"pointer", letterSpacing:1 } }, "SAVE"),
                     !empty && React.createElement("button", { onClick: () => { if(window.confirm("Delete Slot "+slot+"?")){ deleteSaveSlot(slot); setShowSaveSlots(false); setTimeout(()=>setShowSaveSlots(true),10); } }, style: { background:"transparent", border:"1px solid #5a2a2a", color:"#8a4040", padding:"6px 10px", fontSize:10, cursor:"pointer" } }, "\uD83D\uDDD1")
                   )
