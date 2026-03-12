@@ -988,6 +988,10 @@ function calcPlayerAttack(player, enemy, cmdId, isDefending) {
     if (hasGhostStep && enemy.turnCount === 0) {
       isCrit = true;
     }
+    if (!isCrit) {
+      const critChance = Math.min(0.05 + agi * 0.005, 0.20);
+      if (Math.random() < critChance) isCrit = true;
+    }
   } else if (cmdId === "ability") {
     const cls = player.class;
     if (cls === "Warrior") {
