@@ -284,41 +284,18 @@ const COMMAND_GROUPS = [
   {
     label: "Explore",
     commands: [
-      { id: "look", icon: "\u{1F441}", label: "Look", desc: "Take a careful look around. The world describes itself to you in detail.", context: ["explore", "town", "camp", "npc"] },
       { id: "search", icon: "\u{1F50D}", label: "Search", desc: "Hunt for hidden items, forage for food/herbs in the wild, or seek clues and secret passages.", context: ["explore", "town", "camp"] },
       { id: "forage", icon: "\u{1F33F}", label: "Forage", desc: "Gather food and herbs from the wild. Better tools improve results.", context: ["explore", "camp"] },
       { id: "farm", icon: "\u{1F33E}", label: "Farm", desc: "Work nearby fields for grain and produce. A sickle helps.", context: ["explore", "camp"] },
       { id: "chop_wood", icon: "\u{1FA93}", label: "Chop Wood", desc: "Gather timber for shelter and trade. A hatchet is required.", context: ["explore", "camp"] },
       { id: "mine_ore", icon: "\u26CF\uFE0F", label: "Mine Ore", desc: "Extract ore and stone from rocky ground. A pickaxe is required.", context: ["explore", "camp"] },
-      { id: "listen", icon: "\u{1F442}", label: "Listen", desc: "Stand still and tune in \u2014 overheard conversations, distant sounds, or silence.", context: ["explore", "town", "camp", "npc"] },
-      { id: "enter", icon: "\u{1F6AA}", label: "Enter", desc: "Step inside a building, cave, or structure you can see nearby.", context: ["explore", "town"] },
       { id: "poi_enter", icon: "\u2620\uFE0F", label: "Venture In", desc: "Enter this dangerous place. A boss lurks inside — and treasure awaits the bold.", context: ["poi"] }
     ]
   },
   {
     label: "Actions",
     commands: [
-      { id: "talk", icon: "\u{1F4AC}", label: "Talk", desc: "Strike up a conversation with someone nearby. You never know what you might learn.", context: ["town", "npc"] },
-      { id: "ask", icon: "\u2753", label: "Ask", desc: "Ask around for rumours, local news, or directions to a point of interest.", context: ["town", "npc"] },
-      { id: "barter", icon: "\u{1FA99}", label: "Barter", desc: "Seek out a merchant to buy or sell goods. Your gold may open many doors.", context: ["town", "npc"] },
       { id: "noticeboard", icon: "\u{1F4CB}", label: "Notice Board", desc: "Read the local notice board for job postings, wanted notices, and news.", context: ["town"] }
-    ]
-  },
-  {
-    label: "Rest",
-    commands: [
-      { id: "rest", icon: "\u{1F6CC}", label: "Rest", desc: "Rest to recover HP. In towns costs gold (inn); in the wild restores 50% of missing HP.", context: ["explore", "town", "camp"] },
-      { id: "camp", icon: "\u{1F525}", label: "Camp", desc: "Make camp overnight. Costs 1 ration for full HP + status clear. Without rations, 50% recovery.", context: ["explore", "camp"] },
-      { id: "pray", icon: "\u{1F64F}", label: "Pray / Meditate", desc: "Free recovery \u2014 restores 25% of missing HP (35% for Clerics and Mages). Always safe.", context: ["explore", "town", "camp", "npc"] },
-      { id: "use_item", icon: "\u{1F392}", label: "Use Item", desc: "Reach into your pack and use something \u2014 a potion, a key, a torch.", context: ["explore", "town", "camp", "npc", "combat"] }
-    ]
-  },
-  {
-    label: "Quests",
-    commands: [
-      { id: "inspect", icon: "\u{1F50E}", label: "Inspect", desc: "Take a closer look at something specific nearby \u2014 an object, marking, or oddity.", context: ["explore", "town", "camp", "npc"] },
-      { id: "descend", icon: "\u2B07\uFE0F", label: "Descend", desc: "Descend deeper into the dungeon \u2014 the next floor awaits.", context: ["dungeon"] },
-      { id: "ascend", icon: "\u2B06\uFE0F", label: "Ascend", desc: "Ascend to the surface, banking all loot you've collected.", context: ["dungeon"] }
     ]
   },
   {
@@ -4609,7 +4586,7 @@ function QuestLogScreen({ player, onClose, onDismiss, T, tf, bf, worldSeed }) {
     "\u2715 Dismiss Quest"
   )))));
 }
-function ShopScreen({ player, onBuy, onSell, onClose, T, tf, isDyslexic }) {
+function ShopScreen({ player, onBuy, onSell, onClose, onBarter, shopPriceOverrides, T, tf, isDyslexic }) {
   const [tab, setTab] = useState("buy");
   const [stock] = useState(() => generateShopStock(player.location, player));
   const [feedback, setFeedback] = useState("");
@@ -4648,7 +4625,7 @@ function ShopScreen({ player, onBuy, onSell, onClose, T, tf, isDyslexic }) {
     setConfirmSell(null);
   }
   const sellableItems = player.inventory || [];
-  return /* @__PURE__ */ React.createElement("div", { style: { ...{ fontFamily: "'Crimson Text',Georgia,serif", color: T.text }, position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 620, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: `0 8px 40px #00000099` } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "\u{1FA99} MERCHANT"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2, fontFamily: "Crimson Text,serif" } }, location, " \xB7 ", settlementTier.charAt(0).toUpperCase() + settlementTier.slice(1), perks.discount > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: "#60c060", marginLeft: 8 } }, "\u2713 ", perks.discount, "% Compact discount"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 14 } }, "\u{1FA99} ", player.gold, "g"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715"))), feedback && /* @__PURE__ */ React.createElement("div", { style: { background: feedback.startsWith("\u274C") ? T.hpColor + "33" : "#30803033", borderBottom: `1px solid ${T.border}`, padding: "6px 18px", fontSize: 13, color: feedback.startsWith("\u274C") ? "#ff8080" : "#80d080", fontStyle: "italic", flexShrink: 0 } }, feedback), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", borderBottom: `1px solid ${T.border}`, flexShrink: 0 } }, [["buy", "\u{1F6D2} Buy"], ["sell", "\u{1F4B0} Sell"]].map(([id, label]) => /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { style: { ...{ fontFamily: "'Crimson Text',Georgia,serif", color: T.text }, position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 620, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: `0 8px 40px #00000099` } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "\u{1FA99} MERCHANT"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2, fontFamily: "Crimson Text,serif" } }, location, " \xB7 ", settlementTier.charAt(0).toUpperCase() + settlementTier.slice(1), perks.discount > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: "#60c060", marginLeft: 8 } }, "\u2713 ", perks.discount, "% Compact discount"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 14 } }, "\u{1FA99} ", player.gold, "g"), onBarter && /* @__PURE__ */ React.createElement("button", { onClick: onBarter, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "4px 10px", fontSize: 11, cursor: "pointer", ...tf, letterSpacing: 1 } }, "\uD83E\uDE99 Barter"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715"))), feedback && /* @__PURE__ */ React.createElement("div", { style: { background: feedback.startsWith("\u274C") ? T.hpColor + "33" : "#30803033", borderBottom: `1px solid ${T.border}`, padding: "6px 18px", fontSize: 13, color: feedback.startsWith("\u274C") ? "#ff8080" : "#80d080", fontStyle: "italic", flexShrink: 0 } }, feedback), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", borderBottom: `1px solid ${T.border}`, flexShrink: 0 } }, [["buy", "\u{1F6D2} Buy"], ["sell", "\u{1F4B0} Sell"]].map(([id, label]) => /* @__PURE__ */ React.createElement(
     "button",
     {
       key: id,
@@ -4657,7 +4634,9 @@ function ShopScreen({ player, onBuy, onSell, onClose, T, tf, isDyslexic }) {
     },
     label
   ))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: 12 } }, tab === "buy" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginBottom: 12, fontStyle: "italic", lineHeight: 1.6, padding: "8px 10px", background: T.panelAlt, border: `1px solid ${T.border}` } }, "Stock refreshes when you rest or make camp. ", perks.discount > 0 ? `Your Merchant's Compact standing gives you a ${perks.discount}% discount.` : "Join the Merchant's Compact for discounts and exclusive wares."), stock.map((item) => {
-    const price = applyDiscount(item.price);
+    const hasOverride = !!(shopPriceOverrides || {})[item.id];
+    const basePrice = hasOverride ? (shopPriceOverrides || {})[item.id] : item.price;
+    const price = applyDiscount(basePrice);
     const canAfford = player.gold >= price;
     const tierColor = tierColors[item.tier] || T.textMuted;
     return /* @__PURE__ */ React.createElement("div", { key: item.id, style: {
@@ -4669,7 +4648,7 @@ function ShopScreen({ player, onBuy, onSell, onClose, T, tf, isDyslexic }) {
       alignItems: "center",
       gap: 12,
       opacity: canAfford ? 1 : 0.6
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 22, flexShrink: 0 } }, item.icon), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { ...tf, color: T.text, fontSize: 13 } }, item.name), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: tierColor, border: `1px solid ${tierColor}`, padding: "1px 5px", letterSpacing: 1, ...tf } }, tierLabels[item.tier]?.toUpperCase()), item.isHidden && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: T.accent, border: `1px solid ${T.accent}`, padding: "1px 5px", letterSpacing: 1, ...tf } }, "EXCLUSIVE")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 3, lineHeight: 1.5 } }, item.desc)), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, textAlign: "right" } }, perks.discount > 0 && price < item.price && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textFaint, textDecoration: "line-through", marginBottom: 1 } }, item.price, "g"), /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: canAfford ? T.gold : "#c06060", fontSize: 13, marginBottom: 4 } }, price, "g"), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 22, flexShrink: 0 } }, item.icon), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { ...tf, color: T.text, fontSize: 13 } }, item.name), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: tierColor, border: `1px solid ${tierColor}`, padding: "1px 5px", letterSpacing: 1, ...tf } }, tierLabels[item.tier]?.toUpperCase()), item.isHidden && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: T.accent, border: `1px solid ${T.accent}`, padding: "1px 5px", letterSpacing: 1, ...tf } }, "EXCLUSIVE")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 3, lineHeight: 1.5 } }, item.desc)), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, textAlign: "right" } }, perks.discount > 0 && price < item.price && !hasOverride && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textFaint, textDecoration: "line-through", marginBottom: 1 } }, item.price, "g"), hasOverride && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textFaint, textDecoration: "line-through", marginBottom: 1 } }, item.price, "g"), /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: canAfford ? T.gold : "#c06060", fontSize: 13, marginBottom: 4 } }, price, "g"), hasOverride && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#80a0c0", letterSpacing: 1, marginBottom: 2 } }, "negotiated"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => handleBuy(item),
@@ -6159,6 +6138,10 @@ function AethermoorRPG() {
     const m = text.match(/\{"goldChange"\s*:\s*(-?\d+)\}/);
     return m ? parseInt(m[1], 10) : null;
   }
+  function extractShopPriceTag(text) {
+    const m = text.match(/\{"shopPrice"\s*:\s*\{"item"\s*:\s*"([^"]+)"\s*,\s*"price"\s*:\s*(\d+)\}/);
+    return m ? { item: m[1], price: parseInt(m[2], 10) } : null;
+  }
   function advanceGameTime(u, hours) {
     const total = (u.gameHour || 8) + hours;
     const dayInc = Math.floor(total / 24);
@@ -6218,6 +6201,7 @@ function AethermoorRPG() {
     t = t.replace(/\{"grantAbility"\s*:\s*"[^"]+"\}/g, "");
     t = t.replace(/\{"repChange"\s*:\s*-?\d+\}/g, "");
     t = t.replace(/\{"goldChange"\s*:\s*-?\d+\}/g, "");
+    t = t.replace(/\{"shopPrice"\s*:\s*\{[^}]+\}\s*\}/g, "");
     t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
     t = t.replace(/\{"suggestions"\s*:[\s\S]*/g, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
@@ -6257,6 +6241,7 @@ function AethermoorRPG() {
     let p = {
   ...INIT_PLAYER(playerName.trim(), selClass),
   location: randomStart,
+  exploredLocations: [randomStart],
   quests: [mainQuestEntry],
       gravestones: legacyGravestones,
       ngPlusCount: ngCount,
@@ -6466,10 +6451,17 @@ function AethermoorRPG() {
       inventory: [...player.inventory || [], item.name]
     };
     setPlayer(u);
-    saveGame(u, worldSeed, messages, narrative, log);
+    // Clear any negotiated price override for this item now that it's been purchased
+    let currentSeed = worldSeed;
+    if (item?.id && worldSeed?.shopPriceOverrides?.[item.id] !== undefined) {
+      const { [item.id]: _removed, ...rest } = worldSeed.shopPriceOverrides;
+      currentSeed = { ...worldSeed, shopPriceOverrides: rest };
+      setWorldSeed(currentSeed);
+    }
+    saveGame(u, currentSeed, messages, narrative, log);
     const u2 = grantFactionXP(u, "merchants_compact", 5);
     setPlayer(u2);
-    saveGame(u2, worldSeed, messages, narrative, log);
+    saveGame(u2, currentSeed, messages, narrative, log);
   }
   function handleSellItem(itemName, sellPrice) {
     if (!player) return;
@@ -6773,6 +6765,19 @@ function AethermoorRPG() {
       const sign = goldChangeTag > 0 ? "+" : "";
       newLog.push({ type: "system", text: `${sign}${goldChangeTag} gold.` });
       queueLevelUpMsg(`${sign}${goldChangeTag} Gold`, 4000);
+    }
+    // Shop price override — narrator sets a negotiated price for an item after a failed barter
+    const shopPriceTag = extractShopPriceTag(response);
+    if (shopPriceTag) {
+      const nameLower = shopPriceTag.item.toLowerCase();
+      const matched = SHOP_ITEMS.find(i => i.name.toLowerCase() === nameLower)
+        || SHOP_ITEMS.find(i => nameLower.includes(i.name.toLowerCase()));
+      if (matched) {
+        const newOverrides = { ...(seedForSave.shopPriceOverrides || {}), [matched.id]: shopPriceTag.price };
+        const updSeed = { ...seedForSave, shopPriceOverrides: newOverrides };
+        setWorldSeed(updSeed);
+        seedForSave = updSeed;
+      }
     }
     // Overdue appointment check — fire reminder when time has passed
     const overdueEvents = (u.scheduledEvents || []).filter(ev =>
@@ -8590,28 +8595,7 @@ React.createElement("button", { onClick: clearSave, style: { background: "transp
     const ctxInfo = { explore: { label: "Exploring", color: "#4a8040", icon: "\u{1F332}" }, town: { label: "In Town", color: "#7060a0", icon: "\u{1F3D8}\uFE0F" }, combat: { label: "In Combat!", color: "#c03030", icon: "\u2694\uFE0F" }, npc: { label: "Talking", color: "#4070a0", icon: "\u{1F4AC}" }, camp: { label: "Camped", color: "#a06020", icon: "\u{1F525}" }, dungeon: { label: "In Dungeon", color: "#8040c0", icon: "\u{1F573}\uFE0F" }, poi: { label: "Point of Interest", color: "#c08040", icon: "\u2620\uFE0F" } };
     const cd = ctxInfo[ctx] || ctxInfo.explore;
     return /* @__PURE__ */ React.createElement("div", { style: { background: cd.color + "22", borderBottom: `1px solid ${cd.color}44`, padding: "6px 16px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, cd.icon), /* @__PURE__ */ React.createElement("span", { style: { ...tf, color: cd.color, fontSize: 11, letterSpacing: 2 } }, cd.label.toUpperCase()), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.textFaint, marginLeft: 4 } }, "\u{1F4CD} ", player.location));
-  })(), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 18 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.textFaint, fontSize: 10, letterSpacing: 2, marginBottom: 8, textAlign: "center" } }, "MOVEMENT"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateAreas: `". north ." "west center east" ". south ."`, gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "64px 64px 64px", gap: 4, maxWidth: 240, margin: "0 auto" } }, [["go_north", "\u2B06", "North", "north"], ["go_west", "\u2B05", "West", "west"], ["go_east", "\u27A1", "East", "east"], ["go_south", "\u2B07", "South", "south"]].map(([id, icon, label, area]) => /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      key: id,
-      onClick: () => {
-        if (!isLoading) {
-          handleCommand(id);
-          setMobileTab("story");
-        }
-      },
-      disabled: isLoading,
-      style: { gridArea: area, background: T.panel, border: `1px solid ${T.border}`, color: isLoading ? T.textFaint : T.accent, cursor: isLoading ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 26, borderRadius: 8, opacity: isLoading ? 0.4 : 1, transition: "all 0.1s" },
-      onTouchStart: (e) => {
-        if (!isLoading) e.currentTarget.style.background = T.accent + "33";
-      },
-      onTouchEnd: (e) => {
-        e.currentTarget.style.background = T.panel;
-      }
-    },
-    /* @__PURE__ */ React.createElement("span", null, icon),
-    /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, ...tf, color: T.textMuted } }, label)
-  )), /* @__PURE__ */ React.createElement("div", { style: { gridArea: "center", background: T.bg, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, borderRadius: 8 } }, "\u{1F9ED}"))), COMMAND_GROUPS.filter((g) => g.label !== "Move").map((group) => {
+  })(), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: 14 } }, COMMAND_GROUPS.filter((g) => g.label !== "Move").map((group) => {
     const ctx = player.context || "explore";
     const available = group.commands.filter((c) => c.context.includes(ctx) && (!c.requiresLocation || player?.location === c.requiresLocation));
     if (available.length === 0) return null;
@@ -8650,7 +8634,7 @@ React.createElement("button", { onClick: clearSave, style: { background: "transp
     /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, "\u{1F3AE}"),
     /* @__PURE__ */ React.createElement("span", null, mobileTab === "commands" ? "Cancel" : "Actions")
   ), React.createElement("button", { onClick: () => { setShowQuestLog(true); setMobileTab("story"); }, disabled: isLoading, style: { position: "relative", background: T.panel, border: `1px solid ${T.border}`, color: T.text, padding: "10px 8px", cursor: isLoading ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, borderRadius: 6, fontSize: 10, opacity: isLoading ? 0.5 : 1, ...tf, letterSpacing: 0.5, minWidth: 54 } }, React.createElement("span", { style: { fontSize: 18 } }, "\uD83D\uDCDC"), React.createElement("span", null, "Quests"), (player?.quests || []).filter(q => q.status === "active").length > 0 && React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: T.accent, color: T.bg, borderRadius: "50%", width: 14, height: 14, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" } }, (player?.quests || []).filter(q => q.status === "active").length)
-  ), isLoading && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", color: T.textFaint, fontSize: 12, fontStyle: "italic", paddingRight: 4 } }, "weaving..."))), showShop && player && /* @__PURE__ */ React.createElement(ShopScreen, { key: shopStockKey, player, onBuy: handleBuyItem, onSell: handleSellItem, onClose: () => setShowShop(false), T, tf, isDyslexic }), showStandings && player && /* @__PURE__ */ React.createElement(StandingsScreen, { player, T, tf, bf, isDyslexic, onClose: () => setShowStandings(false) }), showInventory && player && /* @__PURE__ */ React.createElement(InventoryScreen, { player, onEquip: handleEquipItem, onUnequip: handleUnequipItem, onUse: handleUseItem, onDrop: handleDropItem, onClose: () => setShowInventory(false), T, tf }), showNGPlusScreen && player && /* @__PURE__ */ React.createElement(
+  ), isLoading && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", color: T.textFaint, fontSize: 12, fontStyle: "italic", paddingRight: 4 } }, "weaving..."))), showShop && player && /* @__PURE__ */ React.createElement(ShopScreen, { key: shopStockKey, player, onBuy: handleBuyItem, onSell: handleSellItem, onClose: () => setShowShop(false), onBarter: () => { setShowShop(false); handleCommand("barter"); }, shopPriceOverrides: worldSeed?.shopPriceOverrides || {}, T, tf, isDyslexic }), showStandings && player && /* @__PURE__ */ React.createElement(StandingsScreen, { player, T, tf, bf, isDyslexic, onClose: () => setShowStandings(false) }), showInventory && player && /* @__PURE__ */ React.createElement(InventoryScreen, { player, onEquip: handleEquipItem, onUnequip: handleUnequipItem, onUse: handleUseItem, onDrop: handleDropItem, onClose: () => setShowInventory(false), T, tf }), showNGPlusScreen && player && /* @__PURE__ */ React.createElement(
     NGPlusScreen,
     {
       player,
