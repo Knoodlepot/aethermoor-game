@@ -4356,6 +4356,7 @@ function SkillTreeScreen({ player, onUnlock, onClose, T, tf, bf }) {
   const skillPoints = player.skillPoints || 0;
   const primaryStat = player[tree.primaryStat] || 0;
   const unlockedPerTier = tree.tiers.map(tier => tier.skills.filter(s => unlocked.includes(s.id)).length);
+  const [tab, setTab] = React.useState("skills");
   return /* @__PURE__ */ React.createElement("div", { style: { ...(bf||{}), position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
     /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 700, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px #00000099" } },
       /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" } },
@@ -4365,7 +4366,10 @@ function SkillTreeScreen({ player, onUnlock, onClose, T, tf, bf }) {
         ),
         /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "\u2715")
       ),
-      /* @__PURE__ */ React.createElement("div", { style: { padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 } },
+      React.createElement("div", { style: { display: "flex", borderBottom: `1px solid ${T.border}` } },
+        ["skills","abilities"].map(t => React.createElement("button", { key: t, onClick: () => setTab(t), style: { flex: 1, padding: "8px 4px", background: "none", border: "none", borderBottom: tab === t ? `2px solid ${T.accent}` : "2px solid transparent", color: tab === t ? T.accent : T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: tf.fontFamily, letterSpacing: 1, textTransform: "uppercase" } }, t === "skills" ? "Skill Tree" : "Abilities"))
+      ),
+      tab === "skills" && /* @__PURE__ */ React.createElement("div", { style: { padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 } },
         tree.tiers.map((tier, tierIdx) => {
           const tierStatOk = primaryStat >= tier.threshold;
           const prevOk = tierIdx === 0 || unlockedPerTier[tierIdx - 1] > 0;
@@ -4393,6 +4397,21 @@ function SkillTreeScreen({ player, onUnlock, onClose, T, tf, bf }) {
             )
           );
         })
+      ),
+      tab === "abilities" && React.createElement("div", { style: { padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 } },
+        (player.abilities || []).length === 0
+          ? React.createElement("div", { style: { color: T.textMuted, fontSize: 12, textAlign: "center", padding: 24 } }, "No special abilities yet. Seek out rare NPCs and hidden knowledge.")
+          : (player.abilities || []).map(ab => {
+              const info = ABILITY_INFO[ab] || { icon: "?", type: "Unknown", desc: ab };
+              return React.createElement("div", { key: ab, style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: "10px 14px", display: "flex", gap: 12, alignItems: "flex-start" } },
+                React.createElement("span", { style: { fontSize: 20, lineHeight: 1, flexShrink: 0 } }, info.icon),
+                React.createElement("div", { style: { flex: 1 } },
+                  React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 13, marginBottom: 2 } }, ab, React.createElement("span", { style: { color: "#60c060", fontSize: 10, marginLeft: 8 } }, "\u2713 GRANTED")),
+                  React.createElement("div", { style: { color: T.textMuted, fontSize: 10, marginBottom: 4 } }, info.type.toUpperCase()),
+                  React.createElement("div", { style: { color: T.accent, fontSize: 11 } }, info.desc)
+                )
+              );
+            })
       )
     )
   );
@@ -5189,12 +5208,16 @@ function WorldMap({ player, T, tf, onClose, inline }) {
 }
 
 
-function InputBar({ player, onFreeText, isLoading, T, tf, isDyslexic }) {
+function InputBar({ player, onFreeText, isLoading, T, tf, isDyslexic, fillInput }) {
   const [text, setText] = React.useState('');
   const inputRef = React.useRef(null);
   const ff  = isDyslexic ? "'OpenDyslexic',Arial,sans-serif" : "'Crimson Text',Georgia,serif";
   const cin = isDyslexic ? "'OpenDyslexic',Arial,sans-serif" : "'Cinzel','Palatino Linotype',serif";
   const ctx = player?.context || 'explore';
+
+  React.useEffect(() => {
+    if (fillInput) { setText(fillInput); inputRef.current?.focus(); }
+  }, [fillInput]);
 
   const submit = () => {
     const t = text.trim();
@@ -5767,6 +5790,8 @@ function AethermoorRPG() {
   const [showBestiary, setShowBestiary] = useState(false);
   const [showCrafting, setShowCrafting] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [pendingSuggestion, setPendingSuggestion] = useState(null);
+  const [fillInput, setFillInput] = useState(null);
   const [showSkillTree, setShowSkillTree] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -6170,6 +6195,14 @@ function AethermoorRPG() {
     t = t.replace(/```[a-z]*\s*```/g, "");
     return t.trim();
   }
+  function parseMarkdown(text) {
+    let s = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    s = s.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
+    s = s.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+    s = s.replace(/_([^_\n]+?)_/g, '<em>$1</em>');
+    s = s.replace(/\n/g, '<br>');
+    return s;
+  }
   async function startNewGame() {
     if (!playerName.trim() || !selClass) return;
     setIsLoading(true);
@@ -6450,6 +6483,7 @@ function AethermoorRPG() {
   async function handleCommand(cmdId) {
     if (isLoading) return;
     setSuggestions([]);
+    setPendingSuggestion(null);
     if (tokens <= 0) {
       setScreen('out_of_tokens');
       return;
@@ -8163,6 +8197,10 @@ function AethermoorRPG() {
               onClick: () => setShowHowToPlay(true),
               style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "12px 18px", fontSize: 12, letterSpacing: 2, cursor: "pointer", width: "100%" }
             }, "Open Guide"),
+            React.createElement("button", {
+              onClick: () => setShowPatchNotes(true),
+              style: { ...tf, background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "12px 18px", fontSize: 12, letterSpacing: 2, cursor: "pointer", width: "100%" }
+            }, "Patch Notes"),
             authStatus === 'authed' && React.createElement("button", {
               onClick: () => {
                 const token = getAuthToken();
@@ -8567,7 +8605,7 @@ React.createElement("button", { onClick: clearSave, style: { background: "transp
         /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, ...tf, letterSpacing: 0.5, color: "inherit" } }, cmd.label), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textFaint, marginTop: 3, lineHeight: 1.4, fontFamily: "Crimson Text,serif" } }, cmd.desc))
       );
     })));
-  }), isLoading && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textFaint, fontSize: 13, fontStyle: "italic", padding: 16 } }, "The Fates are weaving your story..."))), /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 16, paddingBottom: 32 } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 16, color: T.text, whiteSpace: "pre-wrap", ...dyxNarr } }, narrative), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 13, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 4, paddingLeft: entry.type === "choice" ? 10 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "12px 0" } }, "The Fates are weaving your story...")), /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderTop: `1px solid ${T.border}`, padding: "8px 12px", display: "flex", gap: 8, flexShrink: 0 } }, /* @__PURE__ */ React.createElement(
+  }), isLoading && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textFaint, fontSize: 13, fontStyle: "italic", padding: 16 } }, "The Fates are weaving your story..."))), /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 16, paddingBottom: 32 } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 16, color: T.text, ...dyxNarr }, dangerouslySetInnerHTML: { __html: parseMarkdown(narrative) } }), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 13, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 4, paddingLeft: entry.type === "choice" ? 10 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "12px 0" } }, "The Fates are weaving your story...")), /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderTop: `1px solid ${T.border}`, padding: "8px 12px", display: "flex", gap: 8, flexShrink: 0 } }, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: () => setMobileTab(mobileTab === "commands" ? "story" : "commands"),
@@ -8614,7 +8652,7 @@ React.createElement("button", { onClick: () => { navigator.clipboard.writeText(p
 React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setScreen("title"); setShowSaveSlots(true); }, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "\uD83D\uDCBE Save"))), /* /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", overflow: "hidden", flex: 1, minHeight: 0 } },
             /* Story tab */
       leftTab === "story" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" } },
-        /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 20, paddingBottom: 32, display: "flex", flexDirection: "column" } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: isDyslexic ? 24 : 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 15, color: T.text, whiteSpace: "pre-wrap", flex: 1, ...dyxNarr } }, narrative), suggestions.length > 0 && !isLoading && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, marginBottom: 8, marginTop: -4 } }, ...suggestions.map((s, i) => /* @__PURE__ */ React.createElement("button", { key: i, onClick: () => handleCommand(s), style: { background: "transparent", border: `1px solid ${T.choiceColor}44`, borderRadius: 5, color: T.choiceColor, padding: "5px 12px", fontSize: 13, textAlign: "left", cursor: "pointer", fontFamily: "inherit", transition: "border-color 0.15s" } }, "\u2192 " + s))), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 12, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 3, paddingLeft: entry.type === "choice" ? 8 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "8px 0" } }, "The Fates are weaving your story..."))
+        /* @__PURE__ */ React.createElement("div", { ref: logRef, style: { flex: 1, overflowY: "auto", padding: 20, paddingBottom: 32, display: "flex", flexDirection: "column" } }, narrative && /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: isDyslexic ? 24 : 18, marginBottom: 10, animation: "slideIn 0.4s ease", lineHeight: 1.9, fontSize: 15, color: T.text, flex: 1, ...dyxNarr }, dangerouslySetInnerHTML: { __html: parseMarkdown(narrative) } }), suggestions.length > 0 && !isLoading && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, marginBottom: 8, marginTop: -4 } }, ...suggestions.map((s, i) => /* @__PURE__ */ React.createElement("button", { key: i, onClick: () => setPendingSuggestion(s), style: { background: "transparent", border: `1px solid ${pendingSuggestion === s ? T.accent : T.choiceColor + "44"}`, borderRadius: 5, color: pendingSuggestion === s ? T.accent : T.choiceColor, padding: "5px 12px", fontSize: 13, textAlign: "left", cursor: "pointer", fontFamily: "inherit", transition: "border-color 0.15s" } }, "\u2192 " + s)), pendingSuggestion && React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, padding: "10px 14px", marginTop: 4, borderRadius: 4 } }, React.createElement("div", { style: { color: T.textMuted, fontSize: 11, marginBottom: 6, fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "USE THIS ACTION?"), React.createElement("div", { style: { color: T.text, fontSize: 13, marginBottom: 8, fontStyle: "italic" } }, pendingSuggestion), React.createElement("div", { style: { display: "flex", gap: 6 } }, React.createElement("button", { onClick: () => { setFillInput(pendingSuggestion); setPendingSuggestion(null); }, style: { flex: 1, background: T.accent + "22", border: `1px solid ${T.accent}`, color: T.gold, padding: "6px 10px", cursor: "pointer", fontSize: 11, fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "Edit & Send"), React.createElement("button", { onClick: () => setPendingSuggestion(null), style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, padding: "6px 10px", cursor: "pointer", fontSize: 11, fontFamily: "Cinzel,'Palatino Linotype',serif", letterSpacing: 1 } }, "Cancel")))), log.slice(-15).filter((l) => l.type !== "narrative").map((entry, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 12, color: entry.type === "choice" ? T.choiceColor : entry.type === "xp" ? T.xpColor : T.systemText, fontStyle: entry.type === "system" ? "italic" : "normal", marginBottom: 3, paddingLeft: entry.type === "choice" ? 8 : 0, borderLeft: entry.type === "choice" ? `2px solid ${T.choiceColor}44` : "none" } }, entry.text)), isLoading && /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 14, fontStyle: "italic", animation: "pulse 1.5s infinite", padding: "8px 0" } }, "The Fates are weaving your story..."))
       ),
       /* Map tab */
       leftTab === "map" && player && /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", position: "relative" } },
@@ -8632,7 +8670,7 @@ React.createElement("button", { onClick: () => { setSaveSlotAction("save"); setS
         }, "🗺️  Map")
       ),
       /* Input bar */
-      player && /* @__PURE__ */ React.createElement(InputBar, { player, onFreeText: handleCommand, isLoading, T, tf, isDyslexic }),
+      player && /* @__PURE__ */ React.createElement(InputBar, { player, onFreeText: handleCommand, isLoading, T, tf, isDyslexic, fillInput }),
       /* Modals */
       mapOpen && player && /* @__PURE__ */ React.createElement(WorldMap, { player, T, tf, onClose: () => setMapOpen(false) }),
       /* ── Dungeon Warning Modal ── */
