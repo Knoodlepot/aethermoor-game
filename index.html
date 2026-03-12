@@ -8368,9 +8368,9 @@ function AethermoorRPG() {
                   const id = payload.accountId || payload.playerId || '';
                   if (!id) return;
                   navigator.clipboard.writeText(String(id)).then(() => {
-                    queueLevelUpMsg('Player ID copied to clipboard!', 3000);
+                    alert('✓ Player ID copied to clipboard!');
                   }).catch(() => {
-                    queueLevelUpMsg('Could not copy \u2014 ID: ' + id, 4000);
+                    alert('Could not copy to clipboard. Your ID: ' + id);
                   });
                 } catch {}
               },
@@ -8417,7 +8417,9 @@ function AethermoorRPG() {
             }, `${theme.label} — ${theme.desc}`))
           )
         )
-      )
+      ),
+      profileModal,
+      showPatchNotes && React.createElement(PatchNotesScreen, { onClose: () => setShowPatchNotes(false), T, tf, bf })
     );
   }
 
