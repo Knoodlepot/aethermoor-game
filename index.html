@@ -6258,7 +6258,8 @@ function AethermoorRPG() {
       questGiver: npcData.questGiver || false,
       travelDestination: null,
       travelArrivesDay: null,
-      travelArrivesHour: null
+      travelArrivesHour: null,
+      lastInteractionNotes: null
     };
     let roster = [...player2.knownNpcs || [], newNpc];
     if (roster.length > 20) {
