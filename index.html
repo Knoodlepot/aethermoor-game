@@ -4367,7 +4367,7 @@ function SkillTreeScreen({ player, onUnlock, onClose, T, tf, bf }) {
         /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14 } }, "\u2715")
       ),
       React.createElement("div", { style: { display: "flex", borderBottom: `1px solid ${T.border}` } },
-        ["skills","abilities"].map(t => React.createElement("button", { key: t, onClick: () => setTab(t), style: { flex: 1, padding: "8px 4px", background: "none", border: "none", borderBottom: tab === t ? `2px solid ${T.accent}` : "2px solid transparent", color: tab === t ? T.accent : T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: tf.fontFamily, letterSpacing: 1, textTransform: "uppercase" } }, t === "skills" ? "Skill Tree" : "Abilities"))
+        ["skills","abilities","professions"].map(t => React.createElement("button", { key: t, onClick: () => setTab(t), style: { flex: 1, padding: "8px 4px", background: "none", border: "none", borderBottom: tab === t ? `2px solid ${T.accent}` : "2px solid transparent", color: tab === t ? T.accent : T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: tf.fontFamily, letterSpacing: 1, textTransform: "uppercase" } }, t === "skills" ? "Skill Tree" : t === "abilities" ? "Abilities" : "Professions"))
       ),
       tab === "skills" && /* @__PURE__ */ React.createElement("div", { style: { padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 } },
         tree.tiers.map((tier, tierIdx) => {
@@ -4412,6 +4412,38 @@ function SkillTreeScreen({ player, onUnlock, onClose, T, tf, bf }) {
                 )
               );
             })
+      ),
+      tab === "professions" && React.createElement("div", { style: { padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 } },
+        [
+          { key: "survival", icon: "\uD83C\uDF3F", label: "Survival", desc: "Improves foraging yields, herb quality, and camp recovery." },
+          { key: "social", icon: "\uD83D\uDDE3\uFE0F", label: "Social", desc: "Each level above 1 grants a 2% discount with merchants." },
+          { key: "farming", icon: "\uD83C\uDF3E", label: "Farming", desc: "Increases crop and field harvest yields when working farms." },
+          { key: "gathering", icon: "\u26CF\uFE0F", label: "Gathering", desc: "Improves ore and timber yields. Requires a pickaxe or hatchet." },
+          { key: "crafting", icon: "\uD83D\uDD28", label: "Crafting", desc: "Unlocks advanced recipes. Higher levels gate complex crafting." }
+        ].map(({ key, icon, label, desc }) => {
+          const lvl = getProfessionLevel(player, key);
+          const xp = getProfessionXp(player, key);
+          const threshold = lvl * 60;
+          const pct = lvl >= 5 ? 100 : Math.round((xp / threshold) * 100);
+          return React.createElement("div", { key, style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: "10px 14px" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 } },
+              React.createElement("span", { style: { fontSize: 20, lineHeight: 1, flexShrink: 0 } }, icon),
+              React.createElement("div", { style: { flex: 1 } },
+                React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 13 } },
+                  label,
+                  React.createElement("span", { style: { color: T.accent, fontSize: 11, marginLeft: 8 } }, "Lv ", lvl, " / 5")
+                ),
+                React.createElement("div", { style: { color: T.textMuted, fontSize: 11 } }, desc)
+              )
+            ),
+            React.createElement("div", { style: { background: T.bg, height: 6, borderRadius: 3, overflow: "hidden" } },
+              React.createElement("div", { style: { background: lvl >= 5 ? T.gold : T.accent, width: pct + "%", height: "100%", transition: "width 0.3s" } })
+            ),
+            lvl < 5
+              ? React.createElement("div", { style: { color: T.textMuted, fontSize: 10, marginTop: 3, textAlign: "right" } }, xp, " / ", threshold, " XP")
+              : React.createElement("div", { style: { color: T.gold, fontSize: 10, marginTop: 3, textAlign: "right" } }, "MAX LEVEL")
+          );
+        })
       )
     )
   );
