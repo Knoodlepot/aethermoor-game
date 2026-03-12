@@ -412,6 +412,18 @@ const ITEM_INFO = {
   "mushroom stew": { icon: "\u{1F372}", type: "Food", desc: "A thick earthy stew of rare mushrooms. Powerful restoration." },
   "ranger's pottage": { icon: "\u{1F35B}", type: "Food", desc: "A dense wild meal from the best the land offers. Fully restores HP." }
 };
+// ── Xephita Disguised Items System ──────────────────────────────────────────
+// Items Xephita sells that appear mundane but reveal as magical
+const DISGUISED_ITEMS = {
+  "rope": {
+    trueName: "Unbreakable Rope",
+    trueIcon: "✨",
+    trueDesc: "An ethereal rope woven from starlight and intention. Three centuries old, unbreakable by any mortal means. Can traverse hazardous terrain safely and assist in narratively appropriate situations.",
+    trueType: "Tool",
+    mechanics: ["hazard_traverse", "narrative_tool", "flavor"],
+    revealText: "As you leave Xephita's stall, the rope shimmers with otherworldly radiance. You realize now what you've purchased—no mere hemp, but something far more ancient and extraordinary."
+  }
+};
 function getItemInfo(itemName) {
   const cleaned = itemName.toLowerCase().replace(/x\d+$/, "").replace(/\s+x\s*\d+$/, "").trim();
   if (ITEM_INFO[cleaned]) return ITEM_INFO[cleaned];
@@ -419,6 +431,35 @@ function getItemInfo(itemName) {
     if (cleaned.includes(key) || key.includes(cleaned)) return val;
   }
   return null;
+}
+// ── Disguised Items Helper Functions ────────────────────────────────────────
+function isDisguisedItem(itemName) {
+  const lower = itemName.toLowerCase().replace(/x\d+$/, "").replace(/\s+x\s*\d+$/, "").trim();
+  return lower in DISGUISED_ITEMS;
+}
+function getDisguisedItemTrueName(mundaneName) {
+  const lower = mundaneName.toLowerCase().replace(/x\d+$/, "").replace(/\s+x\s*\d+$/, "").trim();
+  return DISGUISED_ITEMS[lower]?.trueName || null;
+}
+function getDisguisedItemDisplay(itemName, isRevealed) {
+  const lower = itemName.toLowerCase().replace(/x\d+$/, "").replace(/\s+x\s*\d+$/, "").trim();
+  const disguisedDef = DISGUISED_ITEMS[lower];
+  if (!disguisedDef) return null;
+  if (isRevealed) {
+    return {
+      icon: disguisedDef.trueIcon,
+      name: disguisedDef.trueName,
+      desc: disguisedDef.trueDesc,
+      type: disguisedDef.trueType,
+      isRevealed: true
+    };
+  }
+  // Return mundane version (use normal ITEM_INFO)
+  return {
+    ...getItemInfo(lower),
+    name: itemName.split(/\s+x\s*\d+/i)[0], // mundane name
+    isRevealed: false
+  };
 }
 const EQUIP_SLOTS = {
   weapon: { label: "Weapon", icon: "\u2694\uFE0F", types: ["Weapon"] },
@@ -2149,6 +2190,8 @@ const INIT_PLAYER = (name, cls) => ({
     crafting: { level: 1, xp: 0 }
   },
   // universal non-class progression tracks
+  disguisedItemsRevealed: [],
+  // trueName entries for items that have been revealed from disguise
 });
 // ── Backend URL ──────────────────────────────────────────────────────────
 // Live Railway server — update this if the backend URL ever changes.
@@ -4000,10 +4043,26 @@ function InventoryScreen({ player, onEquip, onUnequip, onUse, onDrop, onClose, T
   }
   return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Crimson Text',Georgia,serif", color: T.text, position: "fixed", inset: 0, background: T.bg + "ee", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panel, border: `1px solid ${T.accent}`, width: "100%", maxWidth: 640, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: `0 8px 40px #00000099` } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.panelAlt, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.gold, fontSize: 16, letterSpacing: 2 } }, "\u{1F392} EQUIPMENT & INVENTORY"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, inventory.length, " item", inventory.length !== 1 ? "s" : "", " in pack \xB7 \u{1FA99} ", player.gold, "g")), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "transparent", border: `1px solid ${T.border}`, color: T.textMuted, width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2715")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 10, letterSpacing: 2, marginBottom: 10 } }, "EQUIPPED"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 } }, Object.entries(EQUIP_SLOTS).map(([slot, slotData]) => {
     const item = equipped[slot];
-    const info = item ? getItemInfo(item) : null;
+    // Check if item is disguised and if it's been revealed
+    const mundaneName = item ? item.split(/\s+x\s*\d+/i)[0] : null;
+    const isDisguised = mundaneName && isDisguisedItem(mundaneName);
+    const trueName = isDisguised ? getDisguisedItemTrueName(mundaneName) : null;
+    const isRevealed = trueName && (player.disguisedItemsRevealed || []).includes(trueName);
+
+    // Get info based on reveal state
+    let info;
+    if (isDisguised && isRevealed) {
+      info = getDisguisedItemDisplay(mundaneName, true);
+    } else if (isDisguised) {
+      info = getDisguisedItemDisplay(mundaneName, false);
+    } else {
+      info = item ? getItemInfo(item) : null;
+    }
+
+    const displayName = isRevealed ? trueName : item;
     const bonus = item ? ITEM_STAT_BONUSES[item] || {} : {};
     const bonusStr = Object.entries(bonus).map(([s, v]) => `+${v} ${s.toUpperCase()}`).join(" ");
-    return /* @__PURE__ */ React.createElement("div", { key: slot, style: { background: item ? T.panelAlt : T.inputBg, border: `1px solid ${item ? slotColor[slot] + "66" : T.border}`, padding: "10px 12px", borderRadius: 4, minHeight: 70 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, opacity: item ? 1 : 0.4 } }, slotData.icon), /* @__PURE__ */ React.createElement("span", { style: { ...tf, fontSize: 10, letterSpacing: 2, color: item ? slotColor[slot] : T.textFaint } }, slotData.label.toUpperCase())), item ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.text, marginBottom: 2 } }, info?.icon || "\u2022", " ", item), bonusStr && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.gold, marginBottom: 4 } }, bonusStr), /* @__PURE__ */ React.createElement(ItemActions, { itemName: item, isEquipped: true, slot })) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textFaint, fontStyle: "italic" } }, "Empty"));
+    return /* @__PURE__ */ React.createElement("div", { key: slot, style: { background: item ? T.panelAlt : T.inputBg, border: `1px solid ${item ? slotColor[slot] + "66" : T.border}`, padding: "10px 12px", borderRadius: 4, minHeight: 70 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, opacity: item ? 1 : 0.4 } }, slotData.icon), /* @__PURE__ */ React.createElement("span", { style: { ...tf, fontSize: 10, letterSpacing: 2, color: item ? slotColor[slot] : T.textFaint } }, slotData.label.toUpperCase())), item ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: isRevealed ? T.gold : T.text, marginBottom: 2 } }, info?.icon || "\u2022", " ", displayName), bonusStr && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.gold, marginBottom: 4 } }, bonusStr), /* @__PURE__ */ React.createElement(ItemActions, { itemName: item, isEquipped: true, slot })) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textFaint, fontStyle: "italic" } }, "Empty"));
   })), (() => {
     const activeSets = getActiveSetBonuses(equipped);
     const allBonuses = getAllEquipmentBonuses(equipped);
@@ -4028,10 +4087,27 @@ function InventoryScreen({ player, onEquip, onUnequip, onUse, onDrop, onClose, T
       })), owned >= 2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.accent, marginTop: 4 } }, "2pc: ", set.bonus2label));
     }));
   })(), /* @__PURE__ */ React.createElement("div", { style: { ...tf, color: T.accent, fontSize: 10, letterSpacing: 2, marginBottom: 10 } }, "PACK \u2014 ", inventory.length, " items"), inventory.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { color: T.textFaint, fontSize: 13, fontStyle: "italic", padding: "16px 0", textAlign: "center" } }, "Your pack is empty.") : inventory.map((item, i) => {
-    const info = getItemInfo(item);
+    // Check if item is disguised and if it's been revealed
+    const mundaneName = item.split(/\s+x\s*\d+/i)[0];
+    const isDisguised = isDisguisedItem(mundaneName);
+    const trueName = isDisguised ? getDisguisedItemTrueName(mundaneName) : null;
+    const isRevealed = trueName && (player.disguisedItemsRevealed || []).includes(trueName);
+
+    // Get info based on reveal state
+    let info;
+    if (isDisguised && isRevealed) {
+      info = getDisguisedItemDisplay(mundaneName, true);
+    } else if (isDisguised) {
+      info = getDisguisedItemDisplay(mundaneName, false);
+    } else {
+      info = getItemInfo(item);
+    }
+
+    // Use revealed name if revealed, otherwise mundane name
+    const displayName = isRevealed ? trueName : item;
     const equipSlot = getItemSlotEx(item);
     const canUse = !!getConsumableEffect(item);
-    return /* @__PURE__ */ React.createElement("div", { key: i, style: { background: T.panelAlt, border: `1px solid ${T.border}`, padding: "10px 12px", marginBottom: 6, borderRadius: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18, flexShrink: 0 } }, info?.icon || "\u2022"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: T.text } }, item), equipSlot && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, ...tf, color: slotColor[equipSlot] || T.accent, letterSpacing: 1, background: T.panelAlt, padding: "1px 6px", border: `1px solid ${slotColor[equipSlot] || T.accent}44`, borderRadius: 3 } }, equipSlot.toUpperCase()), (() => {
+    return /* @__PURE__ */ React.createElement("div", { key: i, style: { background: T.panelAlt, border: `1px solid ${isRevealed ? T.gold + "44" : T.border}`, padding: "10px 12px", marginBottom: 6, borderRadius: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18, flexShrink: 0 } }, info?.icon || "\u2022"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: isRevealed ? T.gold : T.text } }, displayName), isRevealed && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, ...tf, color: T.gold, letterSpacing: 1, background: "#c09030" + "22", padding: "2px 6px", border: `1px solid ${T.gold}66`, borderRadius: 3 } }, "✨ REVEALED"), equipSlot && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, ...tf, color: slotColor[equipSlot] || T.accent, letterSpacing: 1, background: T.panelAlt, padding: "1px 6px", border: `1px solid ${slotColor[equipSlot] || T.accent}44`, borderRadius: 3 } }, equipSlot.toUpperCase()), (() => {
       const s = getItemSet(item);
       return s ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, ...tf, color: T.gold, letterSpacing: 1, background: T.panelAlt, padding: "1px 6px", border: `1px solid ${T.gold}44`, borderRadius: 3 } }, "SET") : null;
     })(), canUse && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, ...tf, color: "#80d080", letterSpacing: 1, background: T.panelAlt, padding: "1px 6px", border: "1px solid #30803044", borderRadius: 3 } }, "CONSUMABLE"), info?.type && !equipSlot && !canUse && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textFaint, letterSpacing: 0.5 } }, info.type)), info?.desc && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 3, lineHeight: 1.5 } }, info.desc), equipSlot && (() => {
@@ -6142,6 +6218,14 @@ function AethermoorRPG() {
     const m = text.match(/\{"shopPrice"\s*:\s*\{"item"\s*:\s*"([^"]+)"\s*,\s*"price"\s*:\s*(\d+)\}/);
     return m ? { item: m[1], price: parseInt(m[2], 10) } : null;
   }
+  function extractDisguisedRevealTag(text) {
+    const m = text.match(/\{"disguisedReveal"\s*:\s*(\[[^\]]*\])\}/);
+    if (!m) return null;
+    try {
+      const arr = JSON.parse(m[1]);
+      return Array.isArray(arr) ? arr : null;
+    } catch { return null; }
+  }
   function advanceGameTime(u, hours) {
     const total = (u.gameHour || 8) + hours;
     const dayInc = Math.floor(total / 24);
@@ -6205,6 +6289,7 @@ function AethermoorRPG() {
     t = t.replace(/\{"suggestions"\s*:\s*\[[^\]]+\]\}/gs, "");
     t = t.replace(/\{"suggestions"\s*:[\s\S]*/g, "");
     t = t.replace(/\{"mainQuestAct"\s*:\s*"[^"]+"\}/g, "");
+    t = t.replace(/\{"disguisedReveal"\s*:\s*\[[^\]]*\]\}/g, "");
     t = t.replace(/\[FORAGE_FOUND:[^\]]+\]/g, "");
     t = t.replace(/```[a-z]*\s*\{"context"\s*:\s*"\w+"\}\s*```/g, "");
     t = t.replace(/```[a-z]*\s*```/g, "");
@@ -6778,6 +6863,23 @@ function AethermoorRPG() {
         setWorldSeed(updSeed);
         seedForSave = updSeed;
       }
+    }
+    // Disguised item reveal — narrator emits when player receives and discovers hidden magical items
+    const disguisedRevealTag = extractDisguisedRevealTag(response);
+    if (disguisedRevealTag && Array.isArray(disguisedRevealTag)) {
+      const revealedSet = new Set(u.disguisedItemsRevealed || []);
+      disguisedRevealTag.forEach(mundaneName => {
+        const trueName = getDisguisedItemTrueName(mundaneName);
+        if (trueName && !revealedSet.has(trueName)) {
+          revealedSet.add(trueName);
+          const disguisedDef = DISGUISED_ITEMS[mundaneName.toLowerCase()];
+          if (disguisedDef) {
+            queueLevelUpMsg(`✨ ${disguisedDef.trueName} revealed!`, 5000);
+            newLog.push({ type: "system", text: `✨ ${disguisedDef.trueName}: ${disguisedDef.revealText.substring(0, 60)}...` });
+          }
+        }
+      });
+      u = { ...u, disguisedItemsRevealed: Array.from(revealedSet) };
     }
     // Overdue appointment check — fire reminder when time has passed
     const overdueEvents = (u.scheduledEvents || []).filter(ev =>
